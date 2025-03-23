@@ -62,14 +62,12 @@ classdef studentControllerInterface < matlab.System
             %   - The idea is to use a lighter controller to first center 
             %     the ball on the desired value before fully
             %     folowing the trajectory
-            k_p = 4;
-            k_servo = 18;
-            theta_saturation = 20 * pi / 180;
+            k_p = 2;
+            k_servo = 10;
+            theta_saturation = 5 * pi / 180;
 
-            t_prev = obj.t_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-
-            theta_d = - k_p * (p_ball - p_ball_ref + 0.11);
+           
+            theta_d = - k_p * (p_ball - p_ball_ref);
             theta_d = min(theta_d, theta_saturation);
             theta_d = max(theta_d, -theta_saturation);
 
@@ -84,8 +82,8 @@ classdef studentControllerInterface < matlab.System
             %   - Once we are approximately around where the desired
             %   location is, we will then run a more advanced controller to
             %   actually follow the desired trajectory
-            k_p = 7.5;
-            k_servo = 60;
+            k_p = 15;
+            k_servo = 50;
             theta_saturation = 56 * pi / 180;
 
             t_prev = obj.t_prev;
