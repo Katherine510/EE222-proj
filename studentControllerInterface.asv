@@ -7,17 +7,13 @@ classdef studentControllerInterface < matlab.System
         theta_d = 0;
         extra_dummy1 = 0;
         extra_dummy2 = 0;
-        state = 0;
     end
     methods(Access = protected)
         % function setupImpl(obj)
         %    disp("You can use this function for initializaition.");
         % end
-        
 
-
-        %% Sample Controller: Simple Proportional Controller
-        function V_servo = stepImplP(obj, t, p_ball, theta)
+        function V_servo = stepImpl(obj, t, p_ball, theta)
         % This is the main function called every iteration. You have to implement
         % the controller in this function, bu you are not allowed to
         % change the signature of this function. 
@@ -28,8 +24,11 @@ classdef studentControllerInterface < matlab.System
         %   theta: servo motor angle provided by the encoder of the motor (rad)
         % Output:
         %   V_servo: voltage to the servo input.        
-            
+            %% Sample Controller: Simple Proportional Controller
             t_prev = obj.t_prev;
+
+            [p_ball, theta] = EKF(obj, t, p_ball, theta)
+
             % Extract reference trajectory at the current timestep.
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             % Decide desired servo angle based on simple proportional feedback.
@@ -51,55 +50,9 @@ classdef studentControllerInterface < matlab.System
             % Update class properties if necessary.
             obj.t_prev = t;
             obj.theta_d = theta_d;
-
-            
-        end
-
-
-        %% Course Controller
-        function V_servo = stepCourseImpl(obj, t, p_ball, theta)
-            % This controller is used to initially center the ball
-            %   - The idea is to use a lighter controller to first center 
-            %     the ball on the desired value before fully
-            %     folowing the trajectory
-            k_p = 2;
-            k_servo = 10;
-            theta_saturation = 5 * pi / 180;
-
-           
-            theta_d = - k_p * (p_ball - p_ball_ref);
-            theta_d = min(theta_d, theta_saturation);
-            theta_d = max(theta_d, -theta_saturation);
-
-            V_servo = k_servo * (theta_d - theta);
-            obj.theta_d = theta_d;
-        end
-
-        
-        %% Fine Controller
-        function V_servo = stepFineImpl(obj, t, p_ball, theta)
-            % This controller is used for the actual trajectory tracking
-            %   - Once we are approximately around where the desired
-            %   location is, we will then run a more advanced controller to
-            %   actually follow the desired trajectory
-            k_p = 15;
-            k_servo = 50;
-            theta_saturation = 56 * pi / 180;
-
-            t_prev = obj.t_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-
-            theta_d = - k_p * (p_ball - p_ball_ref);
-            theta_d = min(theta_d, theta_saturation);
-            theta_d = max(theta_d, -theta_saturation);
-
-            V_servo = k_servo * (theta_d - theta);
-            obj.theta_d = theta_d;
-        end
-        
-        
-        %% Test Controller: Simple Proportional Controller
-        function V_servo = stepImplFunnyPD(obj, t, p_ball, theta)
+        end    
+%% %% Test Controller: EKF
+        function [p_ball, theta] = EKF(obj, t, p_ball, theta)
         % This is the main function called every iteration. You have to implement
         % the controller in this function, bu you are not allowed to
         % change the signature of this function. 
@@ -111,17 +64,48 @@ classdef studentControllerInterface < matlab.System
         % Output:
         %   V_servo: voltage to the servo input.        
 
-            t_prev = obj.t_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            if obj.state == 0
-                V_servo = stepCourseImpl(obj, t, p_ball, theta);
+            rg = 0.0254;
+            L = 0.4255;
+            g = 9.81;
+            K = 1.5;
+            tau = 0.025;
 
-                % Once we are close enough, we switch controllers
-                obj.state = abs((p_ball - p_ball_ref)) < 0.01;
-            elseif obj.state == 1
-                V_servo = stepFineImpl(obj, t, p_ball, theta);
+            initialCovariance = diag([1,1,1,1]);
+            processNoise = diag([0; .01; 0; .01]);
+
+            t_prev = obj.t_prev;
+            dt = t-t_prev;
+
+            if t_prev ~= -1
+                filter = obj.filter;
+                state = obj.State;
+            else
+                filter = trackingEKF(State=[-0.19; 0.00; 0; 0],StateCovariance=initialCovariance, ...
+                    StateTransitionFcn=@stateModel,ProcessNoise=processNoise, ...
+                    MeasurementFcn=@measureModel);
+                state = filter.State;
             end
+
+            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+
+            x4 = state(4);
+
+            predict(filter);
+            dx = [
+                p_ball;
+                (5*9.81/7)*rg/L*sin(theta)-5/7*(L/2-p_ball)*(rg/L)^2*x4^2*cos(theta)^2;
+                x4;
+                -x4/tau
+            ]
+            measurement = state + dx*dt;
+            stateEstimate = correct(filter, measurement);
+            
+            p_ball = stateEstimate(1);
+            theta = stateEstimate(3);
+
+            obj.filter = filter;
             obj.t_prev = t;
+            obj.State = state;
         end
     end
     
@@ -129,9 +113,36 @@ classdef studentControllerInterface < matlab.System
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
         function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
-            V_servo = stepImplFunnyPD(obj, t, p_ball, theta);
+            V_servo = stepImpl(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
         end
     end
     
+end
+function stateNext = stateModel(state)
+    x1 = state(1)
+    x2 = state(2)
+    x3 = state(3)
+    x4 = state(4)
+
+    F = [
+        0 1 0 0;
+        0 0 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3) -0.0102*x4^3*cos(x3)^2;
+        0 0 0 1;
+        0 0 0 -40
+    ]
+    stateNext = F*state;
+end
+
+function z = measureModel(state)
+    x1 = state(1)
+    x2 = state(2)
+    x3 = state(3)
+    x4 = state(4)
+    dx = [
+        p_ball;
+        (5*9.81/7)*rg/L*sin(x3)-5/7*(L/2-x1)*(rg/L)^2*x4^2*cos(x3)^2;
+        x4;
+        -x4/tau
+    ]
 end
