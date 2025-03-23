@@ -14,7 +14,7 @@ ode_func = @ode45;
 % print log for each timestep if true.
 verbose = false;
 % plot animation if true.
-plot_animation = false;
+plot_animation = true;
 % save animation to video if true.
 save_video = false;
 
@@ -37,6 +37,7 @@ end_simulation = false;
 %% Run simulation.
 % _t indicates variables for the current loop.
 tstart = tic;
+controller_handle.setupMODULE()
 while ~end_simulation
     %% Determine control input.
     tstart = tic; % DEBUG    

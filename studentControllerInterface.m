@@ -5,16 +5,17 @@ classdef studentControllerInterface < matlab.System
         % https://www.mathworks.com/help/simulink/ug/data-types-supported-by-simulink.html
         t_prev = -1;
         theta_d = 0;
-        extra_dummy1 = 0;
-        extra_dummy2 = 0;
+        p_prev = 0;
+        theta_prev = 0;
+
         state = 0;
+
+        A = zeros([4, 4]);
+        B = [0; 0; 0; 0];
+        Q = zeros([4, 4]);
+        R = 0;
     end
     methods(Access = protected)
-        % function setupImpl(obj)
-        %    disp("You can use this function for initializaition.");
-        % end
-        
-
 
         %% Sample Controller: Simple Proportional Controller
         function V_servo = stepImplP(obj, t, p_ball, theta)
@@ -112,27 +113,68 @@ classdef studentControllerInterface < matlab.System
         %   theta: servo motor angle provided by the encoder of the motor (rad)
         % Output:
         %   V_servo: voltage to the servo input.        
-
+            
+            % fetch the previous values
             t_prev = obj.t_prev;
+            p_prev = obj.p_prev;
+            theta_prev = obj.theta_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            if obj.state == 0
-                V_servo = stepCourseImpl(obj, t, p_ball, theta);
 
-                % Once we are close enough, we switch controllers
-                obj.state = abs((p_ball - p_ball_ref)) < 0.01;
-            elseif obj.state == 1
-                V_servo = stepFineImpl(obj, t, p_ball, theta);
-            end
+            p_vel = (p_ball-p_prev)/(t-t_prev);
+            theta_vel = (theta-theta_prev)/(t-t_prev);
+            
+            x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta, theta_vel];
+
+            syms x1 x2 x3 x4;
+            A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
+            [K,S,P] = lqr(A_lin, obj.B, obj.Q, obj.R);
+            
+            
+            % if obj.state == 0
+            %     V_servo = stepCourseImpl(obj, t, p_ball, theta);
+            % 
+            %     % Once we are close enough, we switch controllers
+            %     obj.state = 1; %abs((p_ball - p_ball_ref)) < 0.01;
+            % elseif obj.state == 1
+            V_servo = -K * x';
+            % end
             obj.t_prev = t;
+            obj.p_prev = p_ball;
+            obj.theta_prev = theta;
         end
     end
     
     methods(Access = public)
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
-        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
+        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
+
             V_servo = stepImplFunnyPD(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
+        end
+
+
+        function setupMODULE(obj)
+            disp("You can use this function for initializaition.");
+            g = 9.81;
+            rg = 0.0254;
+            L = 0.4255;
+            K = 1.5;
+            t = 0.025;
+            
+            syms x1 x2 x3 x4;
+            eq = [ x2; 
+                   (5/7)*(rg/L)*g*sin(x3) - (5/7)*(rg/L)^2 * x4^4 * (cos(x3))^2; 
+                   x4; 
+                   -(x4/t)];
+            obj.A  = jacobian(eq, [x1, x2, x3, x4]);
+            obj.B = [0; 0; 0; K/t];
+
+            obj.Q = [260,0,0,0;
+                     0,0,0,0;
+                     0,0,0,0;
+                     0,0,0,0];
+            obj.R = 1;
         end
     end
     

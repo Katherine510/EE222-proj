@@ -5,15 +5,18 @@ classdef studentControllerInterface < matlab.System
         % https://www.mathworks.com/help/simulink/ug/data-types-supported-by-simulink.html
         t_prev = -1;
         theta_d = 0;
-        extra_dummy1 = 0;
-        extra_dummy2 = 0;
+        p_prev = 0;
+        theta_prev = 0;
+
         state = 0;
+
+        A = zeros([4, 4]);
+        B = [0; 0; 0; 0];
+        Q = zeros([4, 4]);
+        R = 0;
     end
-    methods(Access = protected)
-        % function setupImpl(obj)
-        %    disp("You can use this function for initializaition.");
-        % end
-        
+    methods(Access = public)
+  
 
 
         %% Sample Controller: Simple Proportional Controller
@@ -62,12 +65,14 @@ classdef studentControllerInterface < matlab.System
             %   - The idea is to use a lighter controller to first center 
             %     the ball on the desired value before fully
             %     folowing the trajectory
-            k_p = 2;
-            k_servo = 10;
-            theta_saturation = 5 * pi / 180;
+            k_p = 4;
+            k_servo = 18;
+            theta_saturation = 20 * pi / 180;
 
-           
-            theta_d = - k_p * (p_ball - p_ball_ref);
+            t_prev = obj.t_prev;
+            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+
+            theta_d = - k_p * (p_ball - p_ball_ref + 0.11);
             theta_d = min(theta_d, theta_saturation);
             theta_d = max(theta_d, -theta_saturation);
 
@@ -82,8 +87,8 @@ classdef studentControllerInterface < matlab.System
             %   - Once we are approximately around where the desired
             %   location is, we will then run a more advanced controller to
             %   actually follow the desired trajectory
-            k_p = 15;
-            k_servo = 50;
+            k_p = 7.5;
+            k_servo = 60;
             theta_saturation = 56 * pi / 180;
 
             t_prev = obj.t_prev;
@@ -110,25 +115,41 @@ classdef studentControllerInterface < matlab.System
         %   theta: servo motor angle provided by the encoder of the motor (rad)
         % Output:
         %   V_servo: voltage to the servo input.        
-
+            
+            % fetch the previous values
             t_prev = obj.t_prev;
+            p_prev = obj.p_prev;
+            theta_prev = obj.theta_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+
+            p_vel = (p_ball-p_prev)/(t-t_prev);
+            theta_vel = (theta-theta_prev)/(t-t_prev);
+            
+            syms x1 x2 x3 x4;
+            A_lin = double(subs(obj.A, [x1, x2, x3, x4], [p_ball, p_vel, theta, theta_vel]));
+            disp(obj.A)
+            [K,S,P] = lqr(A_lin, obj.B, obj.Q, obj.R);
+            
+            
             if obj.state == 0
                 V_servo = stepCourseImpl(obj, t, p_ball, theta);
 
                 % Once we are close enough, we switch controllers
-                obj.state = abs((p_ball - p_ball_ref)) < 0.01;
+                obj.state = 1; %abs((p_ball - p_ball_ref)) < 0.01;
             elseif obj.state == 1
-                V_servo = stepFineImpl(obj, t, p_ball, theta);
+                V_servo = -K * [p_ball, p_vel, theta, theta_vel]';
             end
             obj.t_prev = t;
+            obj.p_prev = p_ball;
+            obj.theta_prev = theta;
         end
     end
     
     methods(Access = public)
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
-        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
+        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
+
             V_servo = stepImplFunnyPD(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
         end
