@@ -12,6 +12,7 @@ classdef studentControllerInterface < matlab.System
 
         A = zeros([4, 4]);
         B = [0; 0; 0; 0];
+        C = [1, 0, 0, 0; 0, 0, 1, 0];
         Q = zeros([4, 4]);
         R = 0;
     end
@@ -126,17 +127,47 @@ classdef studentControllerInterface < matlab.System
             x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta, theta_vel];
 
             syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
-            [K,S,P] = lqr(A_lin, obj.B, obj.Q, obj.R);
+            A_lin = double(subs(obj.A, [x1, x2, x3, x4], [p_ball, p_vel, theta, theta_vel]));
+
+            sys = ss(A_lin, obj.B, obj.C, 0);
+
+            Q = [450,0,0,0;
+                 0,250,0,0;
+                 0,0,0,0;
+                 0,0,0,0];
+
+            if x(1) > 0.08
+                % x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta-75*pi/180, theta_vel];
             
-            
+                Q = [250,0,0,0;
+                     0,30,0,0;
+                     0,0,0,0;
+                     0,0,0,0];
+            end
+
+            R = 1;
+
+            QN = [0.025,0,0,0;
+                 0,0.05,0,0;
+                 0,0,0.025,0;
+                 0,0,0,0.05];
+
+            RN = [0.025 0;
+                0 0.025];
+
+            QXU = blkdiag(Q, R);
+            QWV = blkdiag(QN, RN);
+
+            [KLQG,INFO] = lqg(sys,QXU,QWV);
+
             % if obj.state == 0
             %     V_servo = stepCourseImpl(obj, t, p_ball, theta);
             % 
             %     % Once we are close enough, we switch controllers
             %     obj.state = 1; %abs((p_ball - p_ball_ref)) < 0.01;
             % elseif obj.state == 1
-            V_servo = -K * x';
+
+            V_servo = -INFO.Kx * x';
             % end
             obj.t_prev = t;
             obj.p_prev = p_ball;
@@ -169,11 +200,12 @@ classdef studentControllerInterface < matlab.System
                    -(x4/t)];
             obj.A  = jacobian(eq, [x1, x2, x3, x4]);
             obj.B = [0; 0; 0; K/t];
+            obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
 
-            obj.Q = [260,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0];
+            obj.Q = [50,0,0,0;
+                     0,1,0,0;
+                     0,0,1,0;
+                     0,0,0,1];
             obj.R = 1;
         end
     end
