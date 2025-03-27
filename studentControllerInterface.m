@@ -75,7 +75,7 @@ classdef studentControllerInterface < matlab.System
             syms x1 x2 x3 x4;
             A_lin = double(subs(obj.A, [x1, x2, x3, x4], obj.x_hat'));
 
-            L = obj.M*obj.C'*obj.V;
+            L = -obj.M*obj.C'*obj.V;
             dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
             obj.x_hat = obj.x_hat + dx_hat*dt;
 
@@ -83,17 +83,14 @@ classdef studentControllerInterface < matlab.System
             obj.M = obj.M + dM*dt;
             
             x = obj.x_hat';
+            obj.t_prev = t;
 
         end
 
         function x = generic_SE(obj, t, p_ball, theta)
-            t_prev = obj.t_prev;
-            p_prev = obj.p_prev;
-            theta_prev = obj.theta_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
 
-            p_vel = (p_ball-p_prev)/(t-t_prev);
-            theta_vel = (theta-theta_prev)/(t-t_prev);
+            p_vel = (p_ball-obj.p_prev)/(t-obj.t_prev);
+            theta_vel = (theta-obj.theta_prev)/(t-obj.t_prev);
 
             x = [p_ball, p_vel, theta, theta_vel];
 
@@ -122,12 +119,10 @@ classdef studentControllerInterface < matlab.System
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
             syms x1 x2 x3 x4;
             A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
-            [K,S,P] = lqr(A_lin, obj.B, obj.Q, obj.R);
+            K = lqr(A_lin, obj.B, obj.Q, obj.R);
             
             
             V_servo = -K * x';
-
-            obj.t_prev = t;
             obj.V_servo = V_servo;
         end
     end
@@ -140,7 +135,7 @@ classdef studentControllerInterface < matlab.System
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta);
             disp(xg - xk)
-            V_servo = stepImplLQR(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xk);
             theta_d = obj.theta_d;
         end
 
@@ -174,12 +169,12 @@ classdef studentControllerInterface < matlab.System
             obj.M = [1, 0, 0, 0;
                      0, 1, 0, 0; 
                      0, 0, 1, 0; 
-                     0, 0, 0, 1] * 0.01;
+                     0, 0, 0, 1];
 
             obj.W = [1, 0, 0, 0;
                      0, 1, 0, 0; 
                      0, 0, 1, 0; 
-                     0, 0, 0, 1] *0.1;
+                     0, 0, 0, 1];
             obj.V = eye(2);
         end
 
