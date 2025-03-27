@@ -12,8 +12,16 @@ classdef studentControllerInterface < matlab.System
 
         A = zeros([4, 4]);
         B = [0; 0; 0; 0];
+        C = [1, 0, 0, 0; 0, 0, 1, 0];
         Q = zeros([4, 4]);
         R = 0;
+
+        V_servo = 0;
+
+        x_hat = [-0.19; 0.00; 0; 0];
+        M = eye(2);
+        W = 0;
+        V = 0;
     end
     methods(Access = protected)
 
@@ -58,51 +66,45 @@ classdef studentControllerInterface < matlab.System
 
 
         %% Course Controller
-        function V_servo = stepCourseImpl(obj, t, p_ball, theta)
-            % This controller is used to initially center the ball
-            %   - The idea is to use a lighter controller to first center 
-            %     the ball on the desired value before fully
-            %     folowing the trajectory
-            k_p = 4;
-            k_servo = 18;
-            theta_saturation = 20 * pi / 180;
+        function x = kalmanFilter(obj, t, p_ball, theta)
+            % Get some data
+            y = [p_ball; theta];
+            dt = t - obj.t_prev;
+            
+            % Calculate kalman states
+            syms x1 x2 x3 x4;
+            A_lin = double(subs(obj.A, [x1, x2, x3, x4], obj.x_hat'));
 
-            t_prev = obj.t_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+            L = obj.M*obj.C'*obj.V;
+            dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
+            obj.x_hat = obj.x_hat + dx_hat*dt;
 
-            theta_d = - k_p * (p_ball - p_ball_ref + 0.11);
-            theta_d = min(theta_d, theta_saturation);
-            theta_d = max(theta_d, -theta_saturation);
+            dM = A_lin*obj.M + obj.M*A_lin' + obj.W - obj.M*obj.C'*obj.V*obj.C*obj.M;
+            obj.M = obj.M + dM*dt;
+            
+            x = obj.x_hat';
 
-            V_servo = k_servo * (theta_d - theta);
-            obj.theta_d = theta_d;
         end
 
-        
-        %% Fine Controller
-        function V_servo = stepFineImpl(obj, t, p_ball, theta)
-            % This controller is used for the actual trajectory tracking
-            %   - Once we are approximately around where the desired
-            %   location is, we will then run a more advanced controller to
-            %   actually follow the desired trajectory
-            k_p = 7.5;
-            k_servo = 60;
-            theta_saturation = 56 * pi / 180;
-
+        function x = generic_SE(obj, t, p_ball, theta)
             t_prev = obj.t_prev;
+            p_prev = obj.p_prev;
+            theta_prev = obj.theta_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
 
-            theta_d = - k_p * (p_ball - p_ball_ref);
-            theta_d = min(theta_d, theta_saturation);
-            theta_d = max(theta_d, -theta_saturation);
+            p_vel = (p_ball-p_prev)/(t-t_prev);
+            theta_vel = (theta-theta_prev)/(t-t_prev);
 
-            V_servo = k_servo * (theta_d - theta);
-            obj.theta_d = theta_d;
+            x = [p_ball, p_vel, theta, theta_vel];
+
+            obj.p_prev = p_ball;
+            obj.theta_prev = theta;
+
         end
         
         
-        %% Test Controller: Simple Proportional Controller
-        function V_servo = stepImplFunnyPD(obj, t, p_ball, theta)
+        %% Test Controller: LQR Controller
+        function V_servo = stepImplLQR(obj, t, x)
         % This is the main function called every iteration. You have to implement
         % the controller in this function, bu you are not allowed to
         % change the signature of this function. 
@@ -115,32 +117,18 @@ classdef studentControllerInterface < matlab.System
         %   V_servo: voltage to the servo input.        
             
             % fetch the previous values
-            t_prev = obj.t_prev;
-            p_prev = obj.p_prev;
-            theta_prev = obj.theta_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
 
-            p_vel = (p_ball-p_prev)/(t-t_prev);
-            theta_vel = (theta-theta_prev)/(t-t_prev);
-            
-            x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta, theta_vel];
-
+            x = x - [p_ball_ref, v_ball_ref, 0, 0];
             syms x1 x2 x3 x4;
             A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
             [K,S,P] = lqr(A_lin, obj.B, obj.Q, obj.R);
             
             
-            % if obj.state == 0
-            %     V_servo = stepCourseImpl(obj, t, p_ball, theta);
-            % 
-            %     % Once we are close enough, we switch controllers
-            %     obj.state = 1; %abs((p_ball - p_ball_ref)) < 0.01;
-            % elseif obj.state == 1
             V_servo = -K * x';
-            % end
+
             obj.t_prev = t;
-            obj.p_prev = p_ball;
-            obj.theta_prev = theta;
+            obj.V_servo = V_servo;
         end
     end
     
@@ -148,8 +136,11 @@ classdef studentControllerInterface < matlab.System
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
         function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
-
-            V_servo = stepImplFunnyPD(obj, t, p_ball, theta);
+            
+            xg = generic_SE(obj, t, p_ball, theta);
+            xk = kalmanFilter(obj, t, p_ball, theta);
+            disp(xg - xk)
+            V_servo = stepImplLQR(obj, t, xk);
             theta_d = obj.theta_d;
         end
 
@@ -169,13 +160,29 @@ classdef studentControllerInterface < matlab.System
                    -(x4/t)];
             obj.A  = jacobian(eq, [x1, x2, x3, x4]);
             obj.B = [0; 0; 0; K/t];
+            obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
 
             obj.Q = [260,0,0,0;
                      0,0,0,0;
                      0,0,0,0;
                      0,0,0,0];
             obj.R = 1;
+
+
+
+            obj.x_hat = [-0.19; 0.00; 0; 0];
+            obj.M = [1, 0, 0, 0;
+                     0, 1, 0, 0; 
+                     0, 0, 1, 0; 
+                     0, 0, 0, 1] * 0.01;
+
+            obj.W = [1, 0, 0, 0;
+                     0, 1, 0, 0; 
+                     0, 0, 1, 0; 
+                     0, 0, 0, 1] *0.1;
+            obj.V = eye(2);
         end
+
     end
     
 end
