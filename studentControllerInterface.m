@@ -140,7 +140,7 @@ classdef studentControllerInterface < matlab.System
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta);
             disp(xg - xk)
-            V_servo = stepImplLQR(obj, t, xk);
+            V_servo = stepImplLQR(obj, t, xg);
             theta_d = obj.theta_d;
         end
 
