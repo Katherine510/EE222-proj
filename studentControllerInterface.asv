@@ -10,22 +10,11 @@ classdef studentControllerInterface < matlab.System
 
         state = 0;
 
-        A = 0;
-        B = 0;
-        C = 0;
-        Q = 0;
+        A = zeros([4, 4]);
+        B = [0; 0; 0; 0];
+        C = [1, 0, 0, 0; 0, 0, 1, 0];
+        Q = zeros([4, 4]);
         R = 0;
-
-        QN = 0;
-        RN = 0;
-        QWV = 0;
-
-        x_hat = [-0.19; 0.00; 0; 0];
-        M = 0;
-        W = 0;
-        V = 0;
-
-        V_servo = 0;
     end
     methods(Access = protected)
 
@@ -70,66 +59,51 @@ classdef studentControllerInterface < matlab.System
 
 
         %% Course Controller
-        function x = kalmanFilter(obj, t, p_ball, theta)
-            % Get some data
-            y = [p_ball; theta];
-            dt = t - obj.t_prev;
-            
-            % Calculate kalman states
-            syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], obj.x_hat'));
-            
-            L = -obj.M*obj.C'*obj.V;
-            dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
-            % obj.x_hat = obj.x_hat + dx_hat*dt;
-            obj.x_hat = [p_ball, dx_hat(1), theta, dx_hat(3)]';
-            
+        function V_servo = stepCourseImpl(obj, t, p_ball, theta)
+            % This controller is used to initially center the ball
+            %   - The idea is to use a lighter controller to first center 
+            %     the ball on the desired value before fully
+            %     folowing the trajectory
+            k_p = 4;
+            k_servo = 18;
+            theta_saturation = 20 * pi / 180;
 
-            dM = A_lin*obj.M + obj.M*A_lin' + obj.W - obj.M*obj.C'*obj.V*obj.C*obj.M;
-            obj.M = obj.M + dM*dt;
-            x = obj.x_hat';
-
-        end
-
-        function x = generic_SE(obj, t, p_ball, theta)
-            dt = t - obj.t_prev;
-
-            p_vel = (p_ball-obj.p_prev)/dt;
-            theta_vel = (theta-obj.theta_prev)/dt;
-
-            x = [p_ball, p_vel, theta, theta_vel];
-
-        end
-        
-        
-        %% Test Controller: LQR Controller
-        function V_servo = stepImplLQR(obj, t, x)
-        % This is the main function called every iteration. You have to implement
-        % the controller in this function, bu you are not allowed to
-        % change the signature of this function. 
-        % Input arguments:
-        %   t: current time
-        %   p_ball: position of the ball provided by the ball position sensor (m)
-        %
-        %   theta: servo motor angle provided by the encoder of the motor (rad)
-        % Output:
-        %   V_servo: voltage to the servo input.     
-            
-            % fetch the previous values
+            t_prev = obj.t_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            
-            syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
-            x = x - [p_ball_ref, v_ball_ref, 0, 0];
-            K = lqr(A_lin, obj.B, obj.Q, obj.R);
-            
-            
-            V_servo = -K * x';
-            obj.V_servo = V_servo;
+
+            theta_d = - k_p * (p_ball - p_ball_ref + 0.11);
+            theta_d = min(theta_d, theta_saturation);
+            theta_d = max(theta_d, -theta_saturation);
+
+            V_servo = k_servo * (theta_d - theta);
+            obj.theta_d = theta_d;
         end
 
-        %% Test Controller: LQG Controller
-        function V_servo = stepImplLQG(obj, t, x)
+        
+        %% Fine Controller
+        function V_servo = stepFineImpl(obj, t, p_ball, theta)
+            % This controller is used for the actual trajectory tracking
+            %   - Once we are approximately around where the desired
+            %   location is, we will then run a more advanced controller to
+            %   actually follow the desired trajectory
+            k_p = 7.5;
+            k_servo = 60;
+            theta_saturation = 56 * pi / 180;
+
+            t_prev = obj.t_prev;
+            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+
+            theta_d = - k_p * (p_ball - p_ball_ref);
+            theta_d = min(theta_d, theta_saturation);
+            theta_d = max(theta_d, -theta_saturation);
+
+            V_servo = k_servo * (theta_d - theta);
+            obj.theta_d = theta_d;
+        end
+        
+        
+        %% Test Controller: Simple Proportional Controller
+        function V_servo = stepImplFunnyPD(obj, t, p_ball, theta)
         % This is the main function called every iteration. You have to implement
         % the controller in this function, bu you are not allowed to
         % change the signature of this function. 
@@ -142,32 +116,61 @@ classdef studentControllerInterface < matlab.System
         %   V_servo: voltage to the servo input.        
             
             % fetch the previous values
+            t_prev = obj.t_prev;
+            p_prev = obj.p_prev;
+            theta_prev = obj.theta_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+
+            p_vel = (p_ball-p_prev)/(t-t_prev);
+            theta_vel = (theta-theta_prev)/(t-t_prev);
             
+            x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta, theta_vel];
+
             syms x1 x2 x3 x4;
             A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
-            x = x - [p_ball_ref, v_ball_ref, 0, 0];
 
             sys = ss(A_lin, obj.B, obj.C, 0);
-            
-            if abs(x(1)) > 0.01*0.5
-                obj.Q = [365,0,0,0;
-                         0,75,0,0;
-                         0,0,0,0;
-                         0,0,0,0];
-            else
-                obj.Q = [550,0,0,0;
-                         0,150,0,0;
-                         0,0,0,0;
-                         0,0,0,0];
+
+            Q = [325,0,0,0;
+                 0,200,0,0;
+                 0,0,0,0;
+                 0,0,0,0];
+
+            if x(1) > 0.15
+                x = [(p_ball - p_ball_ref), (p_vel - v_ball_ref), theta-75*pi/180, theta_vel];
+                Q = [200,0,0,0;
+                     0,30,0,0;
+                     0,0,50,0;
+                     0,0,0,0.1];
             end
 
-            QXU = blkdiag(obj.Q, obj.R);
-            [KLQG,INFO] = lqg(sys,QXU,obj.QWV);
+            R = 1;
 
+            QN = [0.025,0,0,0;
+                 0,0.05,0,0;
+                 0,0,0.025,0;
+                 0,0,0,0.05];
+
+            RN = [0.25 0;
+                0 0.25];
+
+            QXU = blkdiag(Q, R);
+            QWV = blkdiag(QN, RN);
+
+            [KLQG,INFO] = lqg(sys,QXU,QWV);
+
+            % if obj.state == 0
+            %     V_servo = stepCourseImpl(obj, t, p_ball, theta);
+            % 
+            %     % Once we are close enough, we switch controllers
+            %     obj.state = 1; %abs((p_ball - p_ball_ref)) < 0.01;
+            % elseif obj.state == 1
 
             V_servo = -INFO.Kx * x';
-            obj.V_servo = V_servo;
+            % end
+            obj.t_prev = t;
+            obj.p_prev = p_ball;
+            obj.theta_prev = theta;
         end
     end
     
@@ -175,17 +178,9 @@ classdef studentControllerInterface < matlab.System
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
         function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
-            
-            xg = generic_SE(obj, t, p_ball, theta);
-            xk = kalmanFilter(obj, t, p_ball, theta);
-            V_servo = stepImplLQR(obj, t, xg);
-            % V_servo = stepImplLQG(obj, t, xg);
+
+            V_servo = stepImplFunnyPD(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
-
-
-            obj.t_prev = t;
-            obj.p_prev = p_ball;
-            obj.theta_prev = theta;
         end
 
 
@@ -206,34 +201,12 @@ classdef studentControllerInterface < matlab.System
             obj.B = [0; 0; 0; K/t];
             obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
 
-            obj.Q = [260,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0];
+            obj.Q = [50,0,0,0;
+                     0,1,0,0;
+                     0,0,1,0;
+                     0,0,0,1];
             obj.R = 1;
-
-
-            obj.QN = [0.025,0,0,0;
-                      0,0.05,0,0;
-                      0,0,0.025,0;
-                      0,0,0,0.05];
-            obj.RN = [0.025 0;
-                      0 0.025];
-            obj.QWV = blkdiag(obj.QN, obj.RN);
-
-
-
-
-            obj.x_hat = [-0.19; 0.00; 0; 0];
-            obj.M = eye(4);
-
-            obj.W = 0.01 * [1, 0, 0, 0;
-                     0, 1, 0, 0; 
-                     0, 0, 1, 0; 
-                     0, 0, 0, 1];
-            obj.V = 0.01 * eye(2);
         end
-
     end
     
 end
