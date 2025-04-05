@@ -2,6 +2,38 @@
 
 EE222/ME237 Nonlinear Systems, Spring 2025 Starter code and instructions for the course project.
 
+## Project Results:
+
+### LQR Controller
+
+| Metric  | Sinusoidal | Square | 
+| ------------- | ------------- | ------------- |
+| Average Tracking Error  | 0.0004  | 0.0015 |
+| Average Energy Consumption  | 0.0216  | 0.0741 |
+| Tracking Cost  | 0.72  | 2.64 |
+| Energy Cost  | 0.11  | 0.37 |
+| Total Score  | 0.83  | 3.01 |
+
+
+[LQR Sinusoidal video](https://youtu.be/mS_5MZMwuOk) |
+[LQR Square video](https://youtu.be/Lpghpy8DOZk)
+
+
+### LQG Controller
+
+| Metric  | Sinusoidal | Square | 
+| ------------- | ------------- | ------------- |
+| Average Tracking Error  | 0.0004  | 0.0014 |
+| Average Energy Consumption  | 0.0253  | 0.0860 |
+| Tracking Cost  | 0.70  | 2.60 |
+| Energy Cost  | 0.13  | 0.43 |
+| Total Score  | 0.83  | 3.03 |
+
+
+[LQG Sinusoidal video](https://youtu.be/EFeHQGZdgwg) |
+[LQG Square video](https://youtu.be/mWMFsFKKsPc)
+
+
 ## Project Overview
 
 This project involves designing and testing nonlinear controllers for a ball and beam system. The objective is to develop controllers that stabilize the ball at a desired position on the beam. You will first implement your controllers in MATLAB simulations and later test them on physical hardware.
