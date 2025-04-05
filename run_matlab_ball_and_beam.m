@@ -6,7 +6,7 @@ clear all
 x0 = [-0.19; 0.00; 0; 0];
 t0 = 0;
 % Simulation time.
-T = 90;
+T = 10;
 % Sampling time of the controller
 dt = 0.01;
 % ode function to use.
@@ -16,7 +16,7 @@ verbose = false;
 % plot animation if true.
 plot_animation = true;
 % save animation to video if true.
-save_video = false;
+save_video = true;
 
 controller_handle = studentControllerInterface();
 u_saturation = 10;

@@ -24,6 +24,7 @@ classdef studentControllerInterface < matlab.System
         M = 0;
         W = 0;
         V = 0;
+        P = 0;
 
         V_servo = 0;
     end
@@ -74,21 +75,47 @@ classdef studentControllerInterface < matlab.System
             % Get some data
             y = [p_ball; theta];
             dt = t - obj.t_prev;
-            
+
             % Calculate kalman states
             syms x1 x2 x3 x4;
             A_lin = double(subs(obj.A, [x1, x2, x3, x4], obj.x_hat'));
-            
-            L = -obj.M*obj.C'*obj.V;
-            dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
-            % obj.x_hat = obj.x_hat + dx_hat*dt;
-            obj.x_hat = [p_ball, dx_hat(1), theta, dx_hat(3)]';
-            
 
-            dM = A_lin*obj.M + obj.M*A_lin' + obj.W - obj.M*obj.C'*obj.V*obj.C*obj.M;
-            obj.M = obj.M + dM*dt;
-            x = obj.x_hat';
+            % Predict
+            x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
+            P_p = obj.P + (A_lin*obj.P+obj.P*A_lin' + eye(4)*0.1)*dt;
 
+            y_p = obj.C*x_p;
+            innov = y - y_p;
+            S = obj.C*P_p*obj.C'+ eye(2)*0.1;
+
+            K = obj.P*obj.C'/S;
+
+            x = x_p + K*innov;
+            obj.x_hat = x;
+            obj.P = (eye(4) - K*obj.C)*P_p;
+            %disp(x)
+
+            % L = -obj.M*obj.C'*obj.V;
+            % dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
+            % % obj.x_hat = obj.x_hat + dx_hat*dt;
+            % obj.x_hat = [p_ball, dx_hat(1), theta, dx_hat(3)]';
+            % 
+            % 
+            % dM = A_lin*obj.M + obj.M*A_lin' + obj.W - obj.M*obj.C'*obj.V*obj.C*obj.M;
+            % obj.M = obj.M + dM*dt;
+            % x = obj.x_hat';
+
+            % sys = ss(A_lin, obj.B, obj.C, 0);
+            % 
+            % Q = [;
+            % R = [1 1];
+            % 
+            % [kalmf,L,P] = kalman(sys,Q,R); 
+            % 
+            % x = kalmf.OutputGroup.StateEstimate;
+            % disp(x)
+
+            % obj.x_hat = x';
         end
 
         function x = generic_SE(obj, t, p_ball, theta)
@@ -178,8 +205,8 @@ classdef studentControllerInterface < matlab.System
             
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta);
-            V_servo = stepImplLQR(obj, t, xg);
-            % V_servo = stepImplLQG(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xk');
+            %V_servo = stepImplLQG(obj, t, xk');
             theta_d = obj.theta_d;
 
 
@@ -225,6 +252,7 @@ classdef studentControllerInterface < matlab.System
 
 
             obj.x_hat = [-0.19; 0.00; 0; 0];
+            obj.P = eye(4);
             obj.M = eye(4);
 
             obj.W = 0.01 * [1, 0, 0, 0;
