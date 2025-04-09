@@ -76,6 +76,7 @@ classdef studentControllerInterface < matlab.System
         %   V_servo: voltage to the servo input.        
             
             xg = generic_SE(obj, t, p_ball, theta);
+            xk = kalmanFilter(obj, t, p_ball, theta)';
             V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
 
