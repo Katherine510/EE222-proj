@@ -15,9 +15,6 @@ classdef studentControllerInterface < matlab.System
         g = 9.81;
         rg = 0.0254;
         L = 0.4255;
-        K = 1.5;
-        t = 0.025;
-            
             
         B = [0; 0; 0; 1.5/0.025];
         C = [1, 0, 0, 0; 0, 0, 1, 0];
@@ -65,7 +62,6 @@ classdef studentControllerInterface < matlab.System
                  0, 0,                                            0,                      1;
                  0, 0,                                            0,                    -40];
         end
-
         %% Sample Controller: Simple Proportional Controller
         function V_servo = stepImpl(obj, t, p_ball, theta)
         % This is the main function called every iteration. You have to implement
@@ -80,11 +76,8 @@ classdef studentControllerInterface < matlab.System
         %   V_servo: voltage to the servo input.        
             
             xg = generic_SE(obj, t, p_ball, theta);
-            xk = kalmanFilter(obj, t, p_ball, theta);
             V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
-            theta_d = obj.theta_d;
-
 
             obj.t_prev = t;
             obj.p_prev = p_ball;
@@ -126,29 +119,6 @@ classdef studentControllerInterface < matlab.System
             x = x_p + K*innov;
             obj.x_hat = x;
             obj.P = (eye(4) - K*obj.C)*P_p;
-            %disp(x)
-
-            % L = -obj.M*obj.C'*obj.V;
-            % dx_hat = A_lin*obj.x_hat + obj.B*obj.V_servo + L * (y - obj.C*obj.x_hat);
-            % % obj.x_hat = obj.x_hat + dx_hat*dt;
-            % obj.x_hat = [p_ball, dx_hat(1), theta, dx_hat(3)]';
-            % 
-            % 
-            % dM = A_lin*obj.M + obj.M*A_lin' + obj.W - obj.M*obj.C'*obj.V*obj.C*obj.M;
-            % obj.M = obj.M + dM*dt;
-            % x = obj.x_hat';
-
-            % sys = ss(A_lin, obj.B, obj.C, 0);
-            % 
-            % Q = [;
-            % R = [1 1];
-            % 
-            % [kalmf,L,P] = kalman(sys,Q,R); 
-            % 
-            % x = kalmf.OutputGroup.StateEstimate;
-            % disp(x)
-
-            % obj.x_hat = x';
         end
 
         function x = generic_SE(obj, t, p_ball, theta)
@@ -156,6 +126,10 @@ classdef studentControllerInterface < matlab.System
 
             p_vel = (p_ball-obj.p_prev)/dt;
             theta_vel = (theta-obj.theta_prev)/dt;
+            if dt == 0
+                p_vel = 0;
+                theta_vel = 0;
+            end
 
             x = [p_ball, p_vel, theta, theta_vel];
 
@@ -187,10 +161,11 @@ classdef studentControllerInterface < matlab.System
                  0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
                  0, 0,                                            0,                      1;
                  0, 0,                                            0,                    -40];
+
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
-            % coder.extrinsic('lqr')
+            coder.extrinsic('lqr')
+            K = [0, 0, 0, 0];
             K = lqr(A_lin, obj.B, obj.Q, obj.R);
-            disp(K)
             
             
             V_servo = -K * x';
@@ -255,48 +230,6 @@ classdef studentControllerInterface < matlab.System
         function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
             V_servo = stepImpl(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
-        end
-
-
-        function setupMODULE(obj)
-            disp("You can use this function for initializaition.");
-            g = 9.81;
-            rg = 0.0254;
-            L = 0.4255;
-            K = 1.5;
-            t = 0.025;
-            
-            
-            obj.B = [0; 0; 0; K/t];
-            obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
-
-            obj.Q = [260,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0;
-                     0,0,0,0];
-            obj.R = 1;
-
-
-            obj.QN = [0.025,0,0,0;
-                      0,0.05,0,0;
-                      0,0,0.025,0;
-                      0,0,0,0.05];
-            obj.RN = [0.025 0;
-                      0 0.025];
-            obj.QWV = blkdiag(obj.QN, obj.RN);
-
-
-
-
-            obj.x_hat = [-0.19; 0.00; 0; 0];
-            obj.P = eye(4);
-            obj.M = eye(4);
-
-            obj.W = 0.01 * [1, 0, 0, 0;
-                     0, 1, 0, 0; 
-                     0, 0, 1, 0; 
-                     0, 0, 0, 1];
-            obj.V = 0.01 * eye(2);
         end
 
     end
