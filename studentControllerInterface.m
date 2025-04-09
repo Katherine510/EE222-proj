@@ -53,17 +53,31 @@ classdef studentControllerInterface < matlab.System
     end
     
     methods(Access = protected)
+        function V_servo = stepImplKP(obj, t, x)
+   
+            p_ball = x(1);
+            theta = x(3);
 
-        function A = linA(obj, x)
-            x1 = x(1);
-            x2 = x(2);
-            x3 = x(3);
-            x4 = x(4);
+            %% Sample Controller: Simple Proportional Controller
+            t_prev = obj.t_prev;
+            % Extract reference trajectory at the current timestep.
+            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+            % Decide desired servo angle based on simple proportional feedback.
+            k_p = 3;
+            theta_d = - k_p * (p_ball - p_ball_ref);
 
-            A = [0, 1,                                            0,                      0;
-                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                 0, 0,                                            0,                      1;
-                 0, 0,                                            0,                    -40];
+            % Make sure that the desired servo angle does not exceed the physical
+            % limit. This part of code is not necessary but highly recommended
+            % because it addresses the actual physical limit of the servo motor.
+            theta_saturation = 56 * pi / 180;    
+            theta_d = min(theta_d, theta_saturation);
+            theta_d = max(theta_d, -theta_saturation);
+
+            % Simple position control to control servo angle to the desired
+            % position.
+            k_servo = 10;
+            V_servo = k_servo * (theta_d - theta);
+            
         end
 
         %% Sample Controller: Simple Proportional Controller
@@ -81,7 +95,8 @@ classdef studentControllerInterface < matlab.System
             
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta);
-            V_servo = stepImplLQR(obj, t, xg);
+            V_servo = stepImplKP(obj, t, xk);
+            %V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
             theta_d = obj.theta_d;
 
@@ -299,6 +314,17 @@ classdef studentControllerInterface < matlab.System
             obj.V = 0.01 * eye(2);
         end
 
+        function A = linA( x)
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+        end
     end
     
 end

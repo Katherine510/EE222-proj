@@ -10,25 +10,61 @@ classdef studentControllerInterface < matlab.System
 
         state = 0;
 
-        A = 0;
-        B = 0;
-        C = 0;
-        Q = 0;
-        R = 0;
+        V_servo = 0;
 
-        QN = 0;
-        RN = 0;
-        QWV = 0;
+        g = 9.81;
+        rg = 0.0254;
+        L = 0.4255;
+        K = 1.5;
+        t = 0.025;
+            
+            
+        B = [0; 0; 0; 1.5/0.025];
+        C = [1, 0, 0, 0; 0, 0, 1, 0];
+
+        Q = [260,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0];
+        R = 1;
+
+
+        QN = [0.025,0,0,0;
+                      0,0.05,0,0;
+                      0,0,0.025,0;
+                      0,0,0,0.05];
+        RN = [0.025 0;
+                      0 0.025];
+        QWV = blkdiag([0.025,0,0,0;
+                      0,0.05,0,0;
+                      0,0,0.025,0;
+                      0,0,0,0.05], [0.025 0;
+                      0 0.025]);
+
+
+
 
         x_hat = [-0.19; 0.00; 0; 0];
-        M = 0;
-        W = 0;
-        V = 0;
-        P = 0;
+        P = eye(4);
+        M = eye(4);
 
-        V_servo = 0;
+        W = 0.01 * [1, 0, 0, 0;
+                     0, 1, 0, 0; 
+                     0, 0, 1, 0; 
+                     0, 0, 0, 1];
+        V = 0.01 * eye(2);
     end
+    
     methods(Access = protected)
+
+        function A = linA(obj, x)
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+        end
 
         %% Sample Controller: Simple Proportional Controller
         function V_servo = stepImpl(obj, t, p_ball, theta)
@@ -45,8 +81,8 @@ classdef studentControllerInterface < matlab.System
             
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta);
-            % V_servo = stepImplLQR(obj, t, xk');
-            V_servo = stepImplLQG(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xg);
+            % V_servo = stepImplLQG(obj, t, xg);
             theta_d = obj.theta_d;
 
 
@@ -64,8 +100,18 @@ classdef studentControllerInterface < matlab.System
             y = [p_ball; theta];
             dt = t - obj.t_prev;
 
+            x = obj.x_hat;
+
             % Calculate kalman states
-            A_lin = linearize(x);
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
 
             % Predict
             x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
@@ -132,9 +178,19 @@ classdef studentControllerInterface < matlab.System
             % fetch the previous values
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             
-            A_lin = linearize(obj, x);
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            % coder.extrinsic('lqr')
             K = lqr(A_lin, obj.B, obj.Q, obj.R);
+            disp(K)
             
             
             V_servo = -K * x';
@@ -157,9 +213,18 @@ classdef studentControllerInterface < matlab.System
             % fetch the previous values
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             
-            A_lin = linearize(x);
-            x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
 
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+            x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            
+            coder.extrinsic('ss')
             sys = ss(A_lin, obj.B, obj.C, 0);
             
             if abs(x(1)) > 0.01*0.5
@@ -175,6 +240,7 @@ classdef studentControllerInterface < matlab.System
             end
 
             QXU = blkdiag(obj.Q, obj.R);
+            coder.extrinsic('lqg')
             [KLQG,INFO] = lqg(sys,QXU,obj.QWV);
 
 
@@ -191,18 +257,6 @@ classdef studentControllerInterface < matlab.System
             theta_d = obj.theta_d;
         end
 
-        function A = linearize(x)
-            x1 = x(1);
-            x2 = x(2);
-            x3 = x(3);
-            x4 = x(4);
-
-            A = [0, 1,                                            0,                      0;
-                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                 0, 0,                                            0,                      1;
-                 0, 0,                                            0,                    -40];
-        end
-
 
         function setupMODULE(obj)
             disp("You can use this function for initializaition.");
@@ -212,12 +266,7 @@ classdef studentControllerInterface < matlab.System
             K = 1.5;
             t = 0.025;
             
-            syms x1 x2 x3 x4;
-            eq = [ x2; 
-                   (5/7)*(rg/L)*g*sin(x3) - (5/7)*(rg/L)^2 * x4^4 * (cos(x3))^2; 
-                   x4; 
-                   -(x4/t)];
-            obj.A  = jacobian(eq, [x1, x2, x3, x4]);
+            
             obj.B = [0; 0; 0; K/t];
             obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
 
