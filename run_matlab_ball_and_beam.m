@@ -37,7 +37,7 @@ end_simulation = false;
 %% Run simulation.
 % _t indicates variables for the current loop.
 tstart = tic;
-controller_handle.setupMODULE()
+% controller_handle.setupMODULE()
 while ~end_simulation
     %% Determine control input.
     tstart = tic; % DEBUG    

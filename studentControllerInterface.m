@@ -10,28 +10,64 @@ classdef studentControllerInterface < matlab.System
 
         state = 0;
 
-        A = 0;
-        B = 0;
-        C = 0;
-        Q = 0;
-        R = 0;
+        V_servo = 0;
 
-        QN = 0;
-        RN = 0;
-        QWV = 0;
+        g = 9.81;
+        rg = 0.0254;
+        L = 0.4255;
+        K = 1.5;
+        t = 0.025;
+            
+            
+        B = [0; 0; 0; 1.5/0.025];
+        C = [1, 0, 0, 0; 0, 0, 1, 0];
+
+        Q = [260,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0];
+        R = 1;
+
+
+        QN = [0.025,0,0,0;
+                      0,0.05,0,0;
+                      0,0,0.025,0;
+                      0,0,0,0.05];
+        RN = [0.025 0;
+                      0 0.025];
+        QWV = blkdiag([0.025,0,0,0;
+                      0,0.05,0,0;
+                      0,0,0.025,0;
+                      0,0,0,0.05], [0.025 0;
+                      0 0.025]);
+
+
+
 
         x_hat = [-0.19; 0.00; 0; 0];
-        M = 0;
-        W = 0;
-        V = 0;
-        P = 0;
+        P = eye(4);
+        M = eye(4);
 
-        V_servo = 0;
+        W = 0.01 * [1, 0, 0, 0;
+                     0, 1, 0, 0; 
+                     0, 0, 1, 0; 
+                     0, 0, 0, 1];
+        V = 0.01 * eye(2);
     end
+    
     methods(Access = protected)
 
+        function A = linA(obj, x)
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+        end
+
         %% Sample Controller: Simple Proportional Controller
-        function V_servo = stepImplP(obj, t, p_ball, theta)
+        function V_servo = stepImpl(obj, t, p_ball, theta)
         % This is the main function called every iteration. You have to implement
         % the controller in this function, bu you are not allowed to
         % change the signature of this function. 
@@ -43,28 +79,16 @@ classdef studentControllerInterface < matlab.System
         % Output:
         %   V_servo: voltage to the servo input.        
             
-            t_prev = obj.t_prev;
-            % Extract reference trajectory at the current timestep.
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            % Decide desired servo angle based on simple proportional feedback.
-            k_p = 3;
-            theta_d = - k_p * (p_ball - p_ball_ref);
+            xg = generic_SE(obj, t, p_ball, theta);
+            xk = kalmanFilter(obj, t, p_ball, theta);
+            V_servo = stepImplLQR(obj, t, xg);
+            % V_servo = stepImplLQG(obj, t, xg);
+            theta_d = obj.theta_d;
 
-            % Make sure that the desired servo angle does not exceed the physical
-            % limit. This part of code is not necessary but highly recommended
-            % because it addresses the actual physical limit of the servo motor.
-            theta_saturation = 56 * pi / 180;    
-            theta_d = min(theta_d, theta_saturation);
-            theta_d = max(theta_d, -theta_saturation);
 
-            % Simple position control to control servo angle to the desired
-            % position.
-            k_servo = 10;
-            V_servo = k_servo * (theta_d - theta);
-            
-            % Update class properties if necessary.
             obj.t_prev = t;
-            obj.theta_d = theta_d;
+            obj.p_prev = p_ball;
+            obj.theta_prev = theta;
 
             
         end
@@ -76,9 +100,18 @@ classdef studentControllerInterface < matlab.System
             y = [p_ball; theta];
             dt = t - obj.t_prev;
 
+            x = obj.x_hat;
+
             % Calculate kalman states
-            syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], obj.x_hat'));
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
 
             % Predict
             x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
@@ -145,10 +178,19 @@ classdef studentControllerInterface < matlab.System
             % fetch the previous values
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             
-            syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            % coder.extrinsic('lqr')
             K = lqr(A_lin, obj.B, obj.Q, obj.R);
+            disp(K)
             
             
             V_servo = -K * x';
@@ -171,10 +213,18 @@ classdef studentControllerInterface < matlab.System
             % fetch the previous values
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             
-            syms x1 x2 x3 x4;
-            A_lin = double(subs(obj.A, [x1, x2, x3, x4], x));
-            x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
 
+            A_lin = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+            x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            
+            coder.extrinsic('ss')
             sys = ss(A_lin, obj.B, obj.C, 0);
             
             if abs(x(1)) > 0.01*0.5
@@ -190,6 +240,7 @@ classdef studentControllerInterface < matlab.System
             end
 
             QXU = blkdiag(obj.Q, obj.R);
+            coder.extrinsic('lqg')
             [KLQG,INFO] = lqg(sys,QXU,obj.QWV);
 
 
@@ -201,18 +252,9 @@ classdef studentControllerInterface < matlab.System
     methods(Access = public)
         % Used this for matlab simulation script. fill free to modify it as
         % however you want.
-        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
-            
-            xg = generic_SE(obj, t, p_ball, theta);
-            xk = kalmanFilter(obj, t, p_ball, theta);
-            % V_servo = stepImplLQR(obj, t, xk');
-            V_servo = stepImplLQG(obj, t, xg');
+        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
+            V_servo = stepImpl(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
-
-
-            obj.t_prev = t;
-            obj.p_prev = p_ball;
-            obj.theta_prev = theta;
         end
 
 
@@ -224,12 +266,7 @@ classdef studentControllerInterface < matlab.System
             K = 1.5;
             t = 0.025;
             
-            syms x1 x2 x3 x4;
-            eq = [ x2; 
-                   (5/7)*(rg/L)*g*sin(x3) - (5/7)*(rg/L)^2 * x4^4 * (cos(x3))^2; 
-                   x4; 
-                   -(x4/t)];
-            obj.A  = jacobian(eq, [x1, x2, x3, x4]);
+            
             obj.B = [0; 0; 0; K/t];
             obj.C = [1, 0, 0, 0; 0, 0, 1, 0];
 
