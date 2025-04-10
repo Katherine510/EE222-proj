@@ -16,7 +16,7 @@ verbose = false;
 % plot animation if true.
 plot_animation = true;
 % save animation to video if true.
-save_video = true;
+save_video = false;
 
 controller_handle = studentControllerInterface();
 u_saturation = 10;

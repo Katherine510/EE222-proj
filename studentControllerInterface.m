@@ -45,9 +45,22 @@ classdef studentControllerInterface < matlab.System
     end
     
     methods(Access = protected)
+
+        function A = linA(obj, x)
+            x1 = x(1);
+            x2 = x(2);
+            x3 = x(3);
+            x4 = x(4);
+
+            A = [0, 1,                                            0,                      0;
+                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                 0, 0,                                            0,                      1;
+                 0, 0,                                            0,                    -40];
+
+        end
        
         %% Main Controller Interface
-        function V_servo = stepImpl(obj, t, p_ball, theta)    
+        function V_servo = stepImpl(obj, t, p_ball, theta)
             
             % State Estimation
             xg = generic_SE(obj, t, p_ball, theta);
@@ -55,8 +68,8 @@ classdef studentControllerInterface < matlab.System
 
             % Feedback Controller
             % V_servo = stepImplP(obj, t, xk);
-            V_servo = stepImplLQR(obj, t, xg);
-            % V_servo = stepImplLQG(obj, t, xg);
+            % V_servo = stepImplLQR(obj, t, xg);
+            V_servo = stepImplLQG(obj, t, xg);
 
             obj.t_prev = t;
             obj.p_prev = p_ball;
@@ -72,16 +85,10 @@ classdef studentControllerInterface < matlab.System
 
             x = obj.x_hat;
 
-            % Calculate kalman states
-            x1 = x(1);
-            x2 = x(2);
-            x3 = x(3);
-            x4 = x(4);
+            if dt > 0
 
-            A_lin = [0, 1,                                            0,                      0;
-                     0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                     0, 0,                                            0,                      1;
-                     0, 0,                                            0,                    -40];
+            % Calculate kalman states
+            A_lin = linA(obj, x);
 
             % Predict
             x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
@@ -96,6 +103,7 @@ classdef studentControllerInterface < matlab.System
             x = x_p + K*innov;
             obj.x_hat = x;
             obj.P = (eye(4) - K*obj.C)*P_p;
+            end
         end
 
         %% State Estimation: Generic Time Stepping
@@ -142,16 +150,7 @@ classdef studentControllerInterface < matlab.System
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             dt = t - t-t_prev;
             
-            x1 = x(1);
-            x2 = x(2);
-            x3 = x(3);
-            x4 = x(4);
-
-            A_lin = [0, 1,                                            0,                      0;
-                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                 0, 0,                                            0,                      1;
-                 0, 0,                                            0,                    -40];
-
+            A_lin = linA(obj, x);
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
             
             coder.extrinsic('lqr')
@@ -180,15 +179,7 @@ classdef studentControllerInterface < matlab.System
             % fetch the previous values
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
             
-            x1 = x(1);
-            x2 = x(2);
-            x3 = x(3);
-            x4 = x(4);
-
-            A_lin = [0, 1,                                            0,                      0;
-                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                 0, 0,                                            0,                      1;
-                 0, 0,                                            0,                    -40];
+            A_lin = linA(obj, x);
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
             
             coder.extrinsic('ss')
@@ -207,9 +198,15 @@ classdef studentControllerInterface < matlab.System
             end
 
             QXU = blkdiag(obj.Q, obj.R);
-            coder.extrinsic('lqg')
-            [KLQG,INFO] = lqg(sys,QXU,obj.QWV);
+            INFO = struct('Kx',[0, 0, 0, 0], ...
+                          'Kw',[0, 0, 0, 0] , ...
+                          'Ki',[] , ...
+                          'L', [0,0; 0,0; 0,0; 0,0] , ...
+                          'Mx',[0,0; 0,0; 0,0; 0,0] , ...
+                          'Mw',[0,0; 0,0; 0,0; 0,0]);
 
+            coder.extrinsic('lqg')
+            [~,INFO] = lqg(sys,QXU,obj.QWV);
 
             V_servo = -INFO.Kx * x';
             obj.V_servo = V_servo;
@@ -217,7 +214,7 @@ classdef studentControllerInterface < matlab.System
     end
     
     methods(Access = public)
-        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)        
+        function [V_servo, theta_d] = stepController(obj, t, p_ball, theta)
             V_servo = stepImpl(obj, t, p_ball, theta);
             theta_d = obj.theta_d;
         end
