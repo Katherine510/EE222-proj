@@ -14,7 +14,7 @@ classdef studentControllerInterface < matlab.System
         B = [0; 0; 0; 1.5/0.025];
         C = [1, 0, 0, 0; 0, 0, 1, 0];
 
-        Q = [10,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0];
+        Q = [75,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0];
         R = 1;
 
 
@@ -68,8 +68,8 @@ classdef studentControllerInterface < matlab.System
 
             % Feedback Controller
             % V_servo = stepImplP(obj, t, xk);
-            % V_servo = stepImplLQR(obj, t, xg);
-            V_servo = stepImplLQG(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xg);
+            % V_servo = stepImplLQG(obj, t, xg);
 
             obj.t_prev = t;
             obj.p_prev = p_ball;
@@ -181,6 +181,7 @@ classdef studentControllerInterface < matlab.System
             
             A_lin = linA(obj, x);
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
+            disp(A_lin)
             
             coder.extrinsic('ss')
             sys = ss(A_lin, obj.B, obj.C, 0);
