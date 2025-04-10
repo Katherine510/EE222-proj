@@ -6,7 +6,7 @@ clear all
 x0 = [-0.19; 0.00; 0; 0];
 t0 = 0;
 % Simulation time.
-T = 10;
+T = 20;
 % Sampling time of the controller
 dt = 0.01;
 % ode function to use.

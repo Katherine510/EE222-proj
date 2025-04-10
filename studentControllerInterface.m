@@ -5,7 +5,6 @@ classdef studentControllerInterface < matlab.System
         theta_d = 0;
         p_prev = 0;
         theta_prev = 0;
-
         V_servo = 0;
 
         g = 9.81;
@@ -20,18 +19,19 @@ classdef studentControllerInterface < matlab.System
 
 
         QN = [0.025,0,0,0;
-                      0,0.05,0,0;
-                      0,0,0.025,0;
-                      0,0,0,0.05];
+              0,0.05,0,0;
+              0,0,0.025,0;
+              0,0,0,0.05];
 
         RN = [0.025 0;
-                      0 0.025];
+              0 0.025];
 
         QWV = blkdiag([0.025,0,0,0;
-                      0,0.05,0,0;
-                      0,0,0.025,0;
-                      0,0,0,0.05], [0.025 0;
-                      0 0.025]);
+                       0,0.05,0,0;
+                       0,0,0.025,0;
+                       0,0,0,0.05], ...
+                       [0.025 0;
+                       0 0.025]);
 
         x_hat = [-0.19; 0.00; 0; 0];
         P = eye(4);
@@ -54,8 +54,8 @@ classdef studentControllerInterface < matlab.System
             xk = kalmanFilter(obj, t, p_ball, theta)';
 
             % Feedback Controller
-            V_servo = stepImplP(obj, t, xk);
-            %V_servo = stepImplLQR(obj, t, xg);
+            % V_servo = stepImplP(obj, t, xk);
+            V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
 
             obj.t_prev = t;
@@ -79,9 +79,9 @@ classdef studentControllerInterface < matlab.System
             x4 = x(4);
 
             A_lin = [0, 1,                                            0,                      0;
-                 0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
-                 0, 0,                                            0,                      1;
-                 0, 0,                                            0,                    -40];
+                     0, 0, 0.0051*cos(x3)*sin(x3)*x4^4 + 0.4183*cos(x3), -0.0102*x4^3*cos(x3)^2;
+                     0, 0,                                            0,                      1;
+                     0, 0,                                            0,                    -40];
 
             % Predict
             x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
@@ -154,24 +154,22 @@ classdef studentControllerInterface < matlab.System
 
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
             
-%             coder.extrinsic('lqr')
-%             K = [0, 0, 0, 0];
-%             K = lqr(A_lin, obj.B, obj.Q, obj.R);
+            coder.extrinsic('lqr')
+            K = [0, 0, 0, 0];
+            K = lqr(A_lin, obj.B, obj.Q, obj.R);
 
-%             dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);
-%             P = dt*dP + obj.P;
-%             
-%             K = inv(obj.R)*(obj.B'*P);
-%  
-%             obj.P = P;
+            % dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);
+            % P = dt*dP + obj.P;
+            % 
+            % K = inv(obj.R)*(obj.B'*P);
+            % 
+            % obj.P = P;
             
-            coder.extrinsic('icare')
-            P = eye(4);
-            [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]);
-
-            disp(P);
-
-            K = inv(obj.R)*(obj.B'*P);
+            % coder.extrinsic('icare')
+            % P = eye(4);
+            % [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]);
+            % 
+            % K = inv(obj.R)*(obj.B'*P);
 
             V_servo = -K * x';
             obj.V_servo = V_servo;
