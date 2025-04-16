@@ -34,7 +34,11 @@ classdef studentControllerInterface < matlab.System
                        0 0.025]);
 
         x_hat = [-0.19; 0.00; 0; 0];
-        P = eye(4);
+        x_est = [-0.19, 0.00, 0, 0];
+        P = [0.00467317845216159	0.00447778693304056	1.79600514031296e-06	-3.34363679122678e-09;
+            0.00447778693210613	0.104399968275514	8.18335789697825e-05	-3.66928669353362e-08;
+            1.79600044138968e-06	8.18335148621331e-05	0.00447750476234807	2.00500225891637e-05;
+            -3.34797749744990e-09	-3.66963222880958e-08	2.00500225883704e-05	0.00124997492495667];
         M = eye(4);
 
         W = 0.01 * [1, 0, 0, 0;
@@ -60,17 +64,33 @@ classdef studentControllerInterface < matlab.System
         end
        
         %% Main Controller Interface
-        function V_servo = stepImpl(obj, t, p_ball, theta)
+        function [V_servo, x_p, P_p] = stepImpl(obj, t, p_ball, theta)
             
             % State Estimation
             xg = generic_SE(obj, t, p_ball, theta);
             xk = kalmanFilter(obj, t, p_ball, theta)';
 
             % Feedback Controller
+            x_p = obj.x_hat;
+            P_p = obj.P;
             % V_servo = stepImplP(obj, t, xk);
             V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
 
+            dV = V_servo - obj.V_servo;
+            if abs(dV) > 0.04
+                V_servo = 0.04 * sign(dV) + obj.V_servo;
+            elseif abs(dV) > 0.005
+                V_servo = obj.V_servo;
+            end
+
+            if V_servo > 5
+               V_servo = 5;
+            elseif V_servo < -5
+                V_servo = -5;
+            end
+
+            obj.V_servo = V_servo;
             obj.t_prev = t;
             obj.p_prev = p_ball;
             obj.theta_prev = theta;
@@ -87,22 +107,22 @@ classdef studentControllerInterface < matlab.System
 
             if dt > 0
 
-            % Calculate kalman states
-            A_lin = linA(obj, x);
-
-            % Predict
-            x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
-            P_p = obj.P + (A_lin*obj.P+obj.P*A_lin' + eye(4)*0.1)*dt;
-
-            y_p = obj.C*x_p;
-            innov = y - y_p;
-            S = obj.C*P_p*obj.C'+ eye(2)*0.1;
-
-            K = obj.P*obj.C'/S;
-
-            x = x_p + K*innov;
-            obj.x_hat = x;
-            obj.P = (eye(4) - K*obj.C)*P_p;
+                % Calculate kalman states
+                A_lin = linA(obj, x);
+    
+                % Predict
+                x_p = obj.x_hat + (A_lin*obj.x_hat + obj.B*obj.V_servo)*dt;
+                P_p = obj.P + (A_lin*obj.P+obj.P*A_lin' + eye(4)*1)*dt;
+    
+                y_p = obj.C*x_p;
+                innov = y - y_p;
+                S = obj.C*P_p*obj.C'+ eye(2)*1;
+    
+                K = obj.P*obj.C'/S;
+    
+                x = x_p + K*innov;
+                obj.x_hat = x;
+                obj.P = (eye(4) - K*obj.C)*P_p;
             end
         end
 
@@ -116,8 +136,10 @@ classdef studentControllerInterface < matlab.System
                 p_vel = 0;
                 theta_vel = 0;
             end
-
+            
             x = [p_ball, p_vel, theta, theta_vel];
+     
+            obj.x_est = x;
 
         end
         
@@ -153,9 +175,9 @@ classdef studentControllerInterface < matlab.System
             A_lin = linA(obj, x);
             x = x - [p_ball_ref, v_ball_ref, 0, 0];
             
-            coder.extrinsic('lqr')
-            K = [0, 0, 0, 0];
-            K = lqr(A_lin, obj.B, obj.Q, obj.R);
+            % coder.extrinsic('lqr')
+            K = [8.6603 10.0662 2.4465 0.0586];
+            % K = lqr(A_lin, obj.B, obj.Q, obj.R);
 
             % dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);
             % P = dt*dP + obj.P;
@@ -164,14 +186,15 @@ classdef studentControllerInterface < matlab.System
             % 
             % obj.P = P;
             
-            % coder.extrinsic('icare')
-            % P = eye(4);
-            % [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]);
-            % 
+            coder.extrinsic('icare')
+%             P = eye(4);
+%            [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]);
+            
             % K = inv(obj.R)*(obj.B'*P);
 
+            % disp(K)
+
             V_servo = -K * x';
-            obj.V_servo = V_servo;
         end
 
         %% Feedback Controller: LQG 
@@ -210,7 +233,7 @@ classdef studentControllerInterface < matlab.System
             [~,INFO] = lqg(sys,QXU,obj.QWV);
 
             V_servo = -INFO.Kx * x';
-            obj.V_servo = V_servo;
+            
         end
     end
     
