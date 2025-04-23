@@ -58,6 +58,58 @@ classdef studentControllerInterface < matlab.System
                  0, 0,                                            0,                    -40];
 
         end
+
+        function K = lqr_custom(obj, A, B, Q, R)
+        %LQR_VIA_MATRIX_SIGN_FUNCTION Computes the LQR gain using matrix sign function method
+        %
+        %   K = LQR_VIA_MATRIX_SIGN_FUNCTION(A, B, Q, R) returns the optimal gain matrix K
+        %   for the continuous-time LQR problem:
+        %
+        %       minimize J = ∫ (x'Qx + u'Ru) dt
+        %       subject to dx/dt = Ax + Bu
+        %
+        %   Inputs:
+        %       A - System dynamics matrix (n x n)
+        %       B - Input matrix (n x m)
+        %       Q - State cost matrix (n x n), symmetric positive semi-definite
+        %       R - Input cost matrix (m x m), symmetric positive definite
+        %
+        %   Output:
+        %       K - Optimal state feedback gain matrix (m x n)
+        
+            % Invert R (assumes R is positive definite)
+            R_inv = inv(R);
+            G = B * R_inv * B';
+        
+            % Construct the Hamiltonian matrix Z
+            Z = [ A      -G;
+                 -Q   -A' ];
+        
+            % Initialize matrix W for iteration
+            % W = Z;
+        
+            % Newton iteration to compute the matrix sign function
+            for i = 1:1000
+                Z = Z - 0.5 * (Z - inv(Z));
+            end
+        
+            % Determine the size of the system
+            n = size(A, 1);
+        
+            % Partition W into 4 submatrices
+            W11 = Z(1:n, 1:n);
+            W12 = Z(1:n, n+1:end);
+            W21 = Z(n+1:end, 1:n);
+            W22 = Z(n+1:end, n+1:end);
+        
+            % Solve for the unique positive semidefinite solution P to the Riccati equation
+            M = [W12; W22 + eye(n)];
+            N = [W11 + eye(n); W21];
+            P = M \ (-N);
+        
+            % Compute the optimal LQR gain
+            K = R_inv * B' * P;
+        end
        
         %% Main Controller Interface
         function V_servo = stepImpl(obj, t, p_ball, theta)
@@ -155,7 +207,7 @@ classdef studentControllerInterface < matlab.System
             
             coder.extrinsic('lqr')
             K = [0, 0, 0, 0];
-            K = lqr(A_lin, obj.B, obj.Q, obj.R);
+            K = lqr_custom(obj, A_lin, obj.B, obj.Q, obj.R);
 
             % dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);
             % P = dt*dP + obj.P;
