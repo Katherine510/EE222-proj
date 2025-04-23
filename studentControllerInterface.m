@@ -126,7 +126,7 @@ classdef studentControllerInterface < matlab.System
             x_p = obj.x_hat;
             P_p = obj.P;
             % V_servo = stepImplP(obj, t, xk);
-            V_servo = stepImplLQR(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xk);
             % V_servo = stepImplLQG(obj, t, xg);
 
             dV = V_servo - obj.V_servo;
@@ -232,22 +232,7 @@ classdef studentControllerInterface < matlab.System
             K = lqr_custom(obj, A_lin, obj.B, obj.Q, obj.R);
             % coder.extrinsic('lqr')
             % K = [8.6603 10.0662 2.4465 0.0586];
-            % K = lqr(A_lin, obj.B, obj.Q, obj.R);=
-
-            % dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);
-            % P = dt*dP + obj.P;
-            % 
-            % K = inv(obj.R)*(obj.B'*P);
-            % 
-            % obj.P = P;
-            
-            coder.extrinsic('icare')
-%             P = eye(4);
-%            [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]);
-            
-            % K = inv(obj.R)*(obj.B'*P);
-
-            % disp(K)
+            % K = lqr(A_lin, obj.B, obj.Q, obj.R);
 
             V_servo = -K * x';
         end
