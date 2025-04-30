@@ -9,7 +9,7 @@
  *
  * Model version              : 13.6
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C source code generated on : Wed Apr 16 14:01:15 2025
+ * C source code generated on : Wed Apr 30 12:53:37 2025
  *
  * Target selection: quarc_win64.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -21,10 +21,10 @@
 #ifndef RTW_HEADER_simulink_experiment_debug_type1_types_h_
 #define RTW_HEADER_simulink_experiment_debug_type1_types_h_
 #include "rtwtypes.h"
-#ifndef struct_tag_cRiPtJOtbnGUmsbmlLYZUC
-#define struct_tag_cRiPtJOtbnGUmsbmlLYZUC
+#ifndef struct_tag_pRIqRTt2wGAgnMnqmaQRxF
+#define struct_tag_pRIqRTt2wGAgnMnqmaQRxF
 
-struct tag_cRiPtJOtbnGUmsbmlLYZUC
+struct tag_pRIqRTt2wGAgnMnqmaQRxF
 {
   real_T t_prev;
   real_T p_prev;
@@ -32,16 +32,18 @@ struct tag_cRiPtJOtbnGUmsbmlLYZUC
   real_T V_servo;
   real_T B[4];
   real_T C[8];
+  real_T Q[16];
+  real_T R;
   real_T x_hat[4];
   real_T P[16];
 };
 
-#endif                                 /* struct_tag_cRiPtJOtbnGUmsbmlLYZUC */
+#endif                                 /* struct_tag_pRIqRTt2wGAgnMnqmaQRxF */
 
 #ifndef typedef_studentControllerInterface_si_T
 #define typedef_studentControllerInterface_si_T
 
-typedef struct tag_cRiPtJOtbnGUmsbmlLYZUC studentControllerInterface_si_T;
+typedef struct tag_pRIqRTt2wGAgnMnqmaQRxF studentControllerInterface_si_T;
 
 #endif                             /* typedef_studentControllerInterface_si_T */
 

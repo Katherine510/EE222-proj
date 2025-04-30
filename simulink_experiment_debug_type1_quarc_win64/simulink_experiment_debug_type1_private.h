@@ -9,7 +9,7 @@
  *
  * Model version              : 13.6
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C source code generated on : Wed Apr 16 14:01:15 2025
+ * C source code generated on : Wed Apr 30 12:53:37 2025
  *
  * Target selection: quarc_win64.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -28,5 +28,6 @@
 /* A global buffer for storing error messages (defined in quanser_common library) */
 EXTERN char _rt_error_message[512];
 extern real_T rt_powd_snf(real_T u0, real_T u1);
+extern real_T rt_hypotd_snf(real_T u0, real_T u1);
 
 #endif               /* RTW_HEADER_simulink_experiment_debug_type1_private_h_ */

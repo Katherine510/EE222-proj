@@ -9,7 +9,7 @@
  *
  * Model version              : 13.6
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C source code generated on : Wed Apr 16 14:01:15 2025
+ * C source code generated on : Wed Apr 30 12:53:37 2025
  *
  * Target selection: quarc_win64.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -19,13 +19,13 @@
  */
 
 #include "simulink_experiment_debug_type1.h"
-#include "rtwtypes.h"
 #include "simulink_experiment_debug_type1_types.h"
-#include "simulink_experiment_debug_type1_private.h"
-#include <math.h>
-#include <emmintrin.h>
-#include "rt_nonfinite.h"
+#include "rtwtypes.h"
 #include <string.h>
+#include <math.h>
+#include "rt_nonfinite.h"
+#include "simulink_experiment_debug_type1_private.h"
+#include <emmintrin.h>
 #include "simulink_experiment_debug_type1_dt.h"
 
 /* Block signals (default storage) */
@@ -38,6 +38,19 @@ DW_simulink_experiment_debug__T simulink_experiment_debug_ty_DW;
 static RT_MODEL_simulink_experiment__T simulink_experiment_debug_ty_M_;
 RT_MODEL_simulink_experiment__T *const simulink_experiment_debug_ty_M =
   &simulink_experiment_debug_ty_M_;
+
+/* Forward declaration for local functions */
+static void simulink_experiment_debug_mrdiv(const real_T A[8], const real_T B[4],
+  real_T Y[8]);
+static real_T simulink_experiment_debug_xnrm2(int32_T n, const real_T x[32],
+  int32_T ix0);
+static void simulink_experiment_debu_xgeqp3(const real_T A[32], real_T b_A[32],
+  real_T tau[4], int32_T jpvt[4]);
+static void simulink_experiment_de_mldivide(const real_T A[32], const real_T B
+  [32], real_T Y[16]);
+static void studentControllerInterface_step(studentControllerInterface_si_T *obj,
+  real_T t, real_T p_ball, real_T theta, real_T *V_servo, real_T x_p[4], real_T
+  P_p[16]);
 static void rate_monotonic_scheduler(void);
 time_T rt_SimUpdateDiscreteEvents(
   int_T rtmNumSampTimes, void *rtmTimingData, int_T *rtmSampleHitPtr, int_T
@@ -134,39 +147,1403 @@ real_T rt_powd_snf(real_T u0, real_T u1)
   return y;
 }
 
-/* Model output function for TID0 */
-void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] */
+static void simulink_experiment_debug_mrdiv(const real_T A[8], const real_T B[4],
+  real_T Y[8])
+{
+  real_T B_0[8];
+  real_T A_0[4];
+  real_T a21;
+  real_T a22;
+  int32_T TWO;
+  int32_T r1;
+  A_0[0] = B[0];
+  A_0[1] = B[1];
+  A_0[2] = B[2];
+  A_0[3] = B[3];
+  memcpy(&B_0[0], &A[0], sizeof(real_T) << 3U);
+  TWO = 1;
+  a22 = A_0[1];
+  a22 = fabs(a22);
+  a21 = a22;
+  a22 = A_0[0];
+  a22 = fabs(a22);
+  if (a21 > a22) {
+    r1 = 1;
+    TWO = 0;
+  } else {
+    r1 = 0;
+  }
+
+  a21 = A_0[TWO] / A_0[r1];
+  a22 = A_0[TWO + 2] - A_0[r1 + 2] * a21;
+  Y[r1 << 2] = B_0[0] / A_0[r1];
+  Y[TWO << 2] = (B_0[4] - Y[r1 << 2] * A_0[r1 + 2]) / a22;
+  Y[r1 << 2] -= Y[TWO << 2] * a21;
+  Y[(r1 << 2) + 1] = B_0[1] / A_0[r1];
+  Y[(TWO << 2) + 1] = (B_0[5] - Y[(r1 << 2) + 1] * A_0[r1 + 2]) / a22;
+  Y[(r1 << 2) + 1] -= Y[(TWO << 2) + 1] * a21;
+  Y[(r1 << 2) + 2] = B_0[2] / A_0[r1];
+  Y[(TWO << 2) + 2] = (B_0[6] - Y[(r1 << 2) + 2] * A_0[r1 + 2]) / a22;
+  Y[(r1 << 2) + 2] -= Y[(TWO << 2) + 2] * a21;
+  Y[(r1 << 2) + 3] = B_0[3] / A_0[r1];
+  Y[(TWO << 2) + 3] = (B_0[7] - Y[(r1 << 2) + 3] * A_0[r1 + 2]) / a22;
+  Y[(r1 << 2) + 3] -= Y[(TWO << 2) + 3] * a21;
+}
+
+static real_T simulink_experiment_debug_xnrm2(int32_T n, const real_T x[32],
+  int32_T ix0)
+{
+  real_T absxk;
+  real_T scale;
+  real_T t;
+  real_T y;
+  int32_T b;
+  int32_T kend;
+  y = 0.0;
+  if (n < 1) {
+  } else if (n == 1) {
+    absxk = x[ix0 - 1];
+    y = fabs(absxk);
+  } else {
+    scale = 3.3121686421112381E-170;
+    kend = n - 1;
+    kend += ix0;
+    for (b = ix0; b <= kend; b++) {
+      absxk = x[b - 1];
+      absxk = fabs(absxk);
+      if (absxk > scale) {
+        t = scale / absxk;
+        y = y * t * t + 1.0;
+        scale = absxk;
+      } else {
+        t = absxk / scale;
+        y += t * t;
+      }
+    }
+
+    y = scale * sqrt(y);
+  }
+
+  return y;
+}
+
+real_T rt_hypotd_snf(real_T u0, real_T u1)
+{
+  real_T a;
+  real_T b;
+  real_T y;
+  a = fabs(u0);
+  b = fabs(u1);
+  if (a < b) {
+    a /= b;
+    y = sqrt(a * a + 1.0) * b;
+  } else if (a > b) {
+    b /= a;
+    y = sqrt(b * b + 1.0) * a;
+  } else if (rtIsNaN(b)) {
+    y = (rtNaN);
+  } else {
+    y = a * 1.4142135623730951;
+  }
+
+  return y;
+}
+
+static void simulink_experiment_debu_xgeqp3(const real_T A[32], real_T b_A[32],
+  real_T tau[4], int32_T jpvt[4])
+{
+  __m128d tmp;
+  real_T A_0[32];
+  real_T x[32];
+  real_T vn1[4];
+  real_T vn2[4];
+  real_T work[4];
+  real_T RSAFMIN;
+  real_T absxk;
+  real_T scale;
+  real_T t;
+  real_T zero;
+  int32_T ONE;
+  int32_T exitg1;
+  int32_T i;
+  int32_T ia;
+  int32_T itemp;
+  int32_T ix;
+  int32_T jA;
+  int32_T kend;
+  int32_T lda;
+  int32_T mmi;
+  int32_T mmip1;
+  int32_T nfxd;
+  int32_T nm1;
+  int32_T nmi;
+  boolean_T exitg2;
+  work[0] = 0.0;
+  work[1] = 0.0;
+  work[2] = 0.0;
+  work[3] = 0.0;
+  for (i = 0; i < 32; i++) {
+    b_A[i] = A[i];
+    x[i] = b_A[i];
+  }
+
+  for (lda = 0; lda < 4; lda++) {
+    i = lda;
+    jpvt[i] = i + 1;
+    ix = (lda << 3) + 1;
+    zero = 0.0;
+    scale = 3.3121686421112381E-170;
+    kend = ix + 7;
+    for (i = ix; i <= kend; i++) {
+      absxk = x[i - 1];
+      absxk = fabs(absxk);
+      if (absxk > scale) {
+        t = scale / absxk;
+        zero = zero * t * t + 1.0;
+        scale = absxk;
+      } else {
+        t = absxk / scale;
+        zero += t * t;
+      }
+    }
+
+    zero = scale * sqrt(zero);
+    vn1[lda] = zero;
+    vn2[lda] = vn1[lda];
+  }
+
+  for (nfxd = 0; nfxd < 4; nfxd++) {
+    kend = ((nfxd << 3) + nfxd) + 1;
+    nmi = 3 - nfxd;
+    mmi = 7 - nfxd;
+    mmip1 = mmi + 1;
+    lda = nmi + 1;
+    ONE = 1;
+    if (lda > 1) {
+      ix = nfxd;
+      absxk = vn1[nfxd];
+      scale = absxk;
+      zero = scale;
+      for (i = 2; i <= lda; i++) {
+        ix++;
+        absxk = vn1[ix];
+        if (absxk > zero) {
+          ONE = i;
+          zero = absxk;
+        }
+      }
+    }
+
+    lda = (nfxd + ONE) - 1;
+    if (lda != nfxd) {
+      ix = lda << 3;
+      ONE = nfxd << 3;
+      for (i = 0; i < 8; i++) {
+        absxk = b_A[ix];
+        b_A[ix] = b_A[ONE];
+        b_A[ONE] = absxk;
+        ix++;
+        ONE++;
+      }
+
+      itemp = jpvt[lda];
+      jpvt[lda] = jpvt[nfxd];
+      jpvt[nfxd] = itemp;
+      vn1[lda] = vn1[nfxd];
+      vn2[lda] = vn2[nfxd];
+    }
+
+    zero = b_A[kend - 1];
+    ix = kend + 1;
+    absxk = 0.0;
+    nm1 = mmip1 - 1;
+    scale = simulink_experiment_debug_xnrm2(nm1, b_A, ix);
+    if (scale != 0.0) {
+      t = rt_hypotd_snf(zero, scale);
+      if (zero >= 0.0) {
+        t = -t;
+      }
+
+      scale = fabs(t);
+      if (scale < 1.0020841800044864E-292) {
+        lda = -1;
+        do {
+          lda++;
+          i = nm1 - 1;
+          itemp = ix + i;
+          ONE = ((((itemp - ix) + 1) / 2) << 1) + ix;
+          jA = ONE - 2;
+          for (i = ix; i <= jA; i += 2) {
+            tmp = _mm_loadu_pd(&b_A[i - 1]);
+            tmp = _mm_mul_pd(tmp, _mm_set1_pd(9.9792015476736E+291));
+            _mm_storeu_pd(&b_A[i - 1], tmp);
+          }
+
+          for (i = ONE; i <= itemp; i++) {
+            b_A[i - 1] *= 9.9792015476736E+291;
+          }
+
+          t *= 9.9792015476736E+291;
+          zero *= 9.9792015476736E+291;
+          scale = fabs(t);
+        } while ((scale < 1.0020841800044864E-292) && (lda + 1 < 20));
+
+        scale = simulink_experiment_debug_xnrm2(nm1, b_A, ix);
+        t = rt_hypotd_snf(zero, scale);
+        if (zero >= 0.0) {
+          t = -t;
+        }
+
+        absxk = t - zero;
+        absxk /= t;
+        scale = zero - t;
+        zero = 1.0 / scale;
+        i = nm1 - 1;
+        itemp = ix + i;
+        ONE = ((((itemp - ix) + 1) / 2) << 1) + ix;
+        jA = ONE - 2;
+        for (i = ix; i <= jA; i += 2) {
+          tmp = _mm_loadu_pd(&b_A[i - 1]);
+          tmp = _mm_mul_pd(tmp, _mm_set1_pd(zero));
+          _mm_storeu_pd(&b_A[i - 1], tmp);
+        }
+
+        for (i = ONE; i <= itemp; i++) {
+          b_A[i - 1] *= zero;
+        }
+
+        for (i = 0; i <= lda; i++) {
+          t *= 1.0020841800044864E-292;
+        }
+
+        zero = t;
+      } else {
+        absxk = t - zero;
+        absxk /= t;
+        scale = zero - t;
+        zero = 1.0 / scale;
+        i = nm1 - 1;
+        itemp = ix + i;
+        ONE = ((((itemp - ix) + 1) / 2) << 1) + ix;
+        jA = ONE - 2;
+        for (i = ix; i <= jA; i += 2) {
+          tmp = _mm_loadu_pd(&b_A[i - 1]);
+          tmp = _mm_mul_pd(tmp, _mm_set1_pd(zero));
+          _mm_storeu_pd(&b_A[i - 1], tmp);
+        }
+
+        for (i = ONE; i <= itemp; i++) {
+          b_A[i - 1] *= zero;
+        }
+
+        zero = t;
+      }
+    }
+
+    tau[nfxd] = absxk;
+    b_A[kend - 1] = zero;
+    if (nfxd + 1 < 4) {
+      zero = b_A[kend - 1];
+      b_A[kend - 1] = 1.0;
+      t = tau[nfxd];
+      lda = kend + 8;
+      if (t != 0.0) {
+        i = mmip1 - 1;
+        i += kend;
+        while ((mmip1 > 0) && (b_A[i - 1] == 0.0)) {
+          mmip1--;
+          i--;
+        }
+
+        exitg2 = false;
+        while ((!exitg2) && (nmi > 0)) {
+          i = nmi - 1;
+          i <<= 3;
+          ONE = lda + i;
+          i = mmip1 - 1;
+          i += ONE;
+          do {
+            exitg1 = 0;
+            if (ONE <= i) {
+              if (b_A[ONE - 1] != 0.0) {
+                exitg1 = 1;
+              } else {
+                ONE++;
+              }
+            } else {
+              nmi--;
+              exitg1 = 2;
+            }
+          } while (exitg1 == 0);
+
+          if (exitg1 == 1) {
+            exitg2 = true;
+          }
+        }
+      } else {
+        mmip1 = 0;
+        nmi = 0;
+      }
+
+      if (mmip1 > 0) {
+        for (i = 0; i < 32; i++) {
+          absxk = b_A[i];
+          x[i] = absxk;
+          A_0[i] = absxk;
+        }
+
+        if (nmi != 0) {
+          ONE = mmip1 - 1;
+          nm1 = nmi - 1;
+          i = nm1;
+          itemp = i;
+          for (i = 0; i <= itemp; i++) {
+            jA = i;
+            work[jA] = 0.0;
+          }
+
+          jA = 0;
+          i = nm1 << 3;
+          itemp = lda + i;
+          for (i = lda; i <= itemp; i += 8) {
+            ix = kend - 1;
+            RSAFMIN = 0.0;
+            nm1 = i + ONE;
+            for (ia = i; ia <= nm1; ia++) {
+              scale = A_0[ia - 1];
+              absxk = x[ix];
+              absxk *= scale;
+              RSAFMIN += absxk;
+              ix++;
+            }
+
+            work[jA] += RSAFMIN;
+            jA++;
+          }
+        }
+
+        t = -t;
+        ONE = 0;
+        if (!(t == 0.0)) {
+          jA = lda - 1;
+          for (lda = 0; lda < nmi; lda++) {
+            absxk = work[ONE];
+            if (absxk != 0.0) {
+              absxk *= t;
+              ix = kend - 1;
+              itemp = jA + 1;
+              i = mmip1 + jA;
+              for (nm1 = itemp; nm1 <= i; nm1++) {
+                b_A[nm1 - 1] += b_A[ix] * absxk;
+                ix++;
+              }
+            }
+
+            ONE++;
+            jA += 8;
+          }
+        }
+      }
+
+      b_A[kend - 1] = zero;
+    }
+
+    for (nmi = nfxd + 2; nmi < 5; nmi++) {
+      kend = ((nmi - 1) << 3) + nfxd;
+      if (vn1[nmi - 1] != 0.0) {
+        absxk = b_A[kend];
+        scale = fabs(absxk);
+        absxk = scale / vn1[nmi - 1];
+        absxk = 1.0 - absxk * absxk;
+        if (absxk < 0.0) {
+          absxk = 0.0;
+        }
+
+        zero = vn1[nmi - 1] / vn2[nmi - 1];
+        zero = zero * zero * absxk;
+        if (zero <= 1.4901161193847656E-8) {
+          ix = kend + 2;
+          memcpy(&x[0], &b_A[0], sizeof(real_T) << 5U);
+          zero = 0.0;
+          scale = 3.3121686421112381E-170;
+          i = mmi - 1;
+          kend = ix + i;
+          for (i = ix; i <= kend; i++) {
+            absxk = x[i - 1];
+            absxk = fabs(absxk);
+            if (absxk > scale) {
+              t = scale / absxk;
+              zero = zero * t * t + 1.0;
+              scale = absxk;
+            } else {
+              t = absxk / scale;
+              zero += t * t;
+            }
+          }
+
+          zero = scale * sqrt(zero);
+          vn1[nmi - 1] = zero;
+          vn2[nmi - 1] = vn1[nmi - 1];
+        } else {
+          absxk = sqrt(absxk);
+          vn1[nmi - 1] *= absxk;
+        }
+      }
+    }
+  }
+}
+
+static void simulink_experiment_de_mldivide(const real_T A[32], const real_T B
+  [32], real_T Y[16])
 {
   __m128d tmp;
   __m128d tmp_0;
-  studentControllerInterface_si_T *obj;
+  real_T A_0[32];
+  real_T B_0[32];
+  real_T Q[32];
+  real_T tau[4];
+  real_T b_0;
+  real_T scale;
+  real_T tauj;
+  real_T wj;
+  int32_T jpvt[4];
+  int32_T b;
+  int32_T b_k;
+  int32_T c_i;
+  int32_T minmn;
+  int32_T pj;
+  int32_T rankA;
+  int32_T scalarLB;
+  int32_T vectorUB;
+  boolean_T exitg1;
+  memcpy(&A_0[0], &A[0], sizeof(real_T) << 5U);
+  memcpy(&B_0[0], &B[0], sizeof(real_T) << 5U);
+  simulink_experiment_debu_xgeqp3(A_0, Q, tau, jpvt);
+  rankA = 0;
+  tauj = Q[0];
+  wj = fabs(tauj);
+  scale = 1.7763568394002505E-14 * wj;
+  exitg1 = false;
+  while ((!exitg1) && (rankA < 4)) {
+    tauj = Q[(rankA << 3) + rankA];
+    wj = fabs(tauj);
+    if (!(wj <= scale)) {
+      rankA++;
+    } else {
+      exitg1 = true;
+    }
+  }
+
+  for (pj = 0; pj < 16; pj++) {
+    Y[pj] = 0.0;
+  }
+
+  memcpy(&A_0[0], &Q[0], sizeof(real_T) << 5U);
+  for (pj = 0; pj < 4; pj++) {
+    minmn = pj;
+    tauj = tau[minmn];
+    if (tauj != 0.0) {
+      for (b_k = 0; b_k < 4; b_k++) {
+        wj = B_0[(b_k << 3) + minmn];
+        b = minmn;
+        for (c_i = b + 2; c_i < 9; c_i++) {
+          scale = A_0[((minmn << 3) + c_i) - 1];
+          b_0 = B_0[((b_k << 3) + c_i) - 1];
+          scale *= b_0;
+          wj += scale;
+        }
+
+        wj *= tauj;
+        if (wj != 0.0) {
+          B_0[minmn + (b_k << 3)] -= wj;
+          c_i = minmn;
+          scalarLB = ((((7 - c_i) / 2) << 1) + c_i) + 2;
+          vectorUB = scalarLB - 2;
+          for (b = c_i + 2; b <= vectorUB; b += 2) {
+            tmp = _mm_loadu_pd(&A_0[((minmn << 3) + b) - 1]);
+            tmp = _mm_mul_pd(tmp, _mm_set1_pd(wj));
+            tmp_0 = _mm_loadu_pd(&B_0[((b_k << 3) + b) - 1]);
+            tmp = _mm_sub_pd(tmp_0, tmp);
+            _mm_storeu_pd(&B_0[(b + (b_k << 3)) - 1], tmp);
+          }
+
+          for (b = scalarLB; b < 9; b++) {
+            B_0[(b + (b_k << 3)) - 1] -= A_0[((minmn << 3) + b) - 1] * wj;
+          }
+        }
+      }
+    }
+  }
+
+  for (b_k = 0; b_k < 4; b_k++) {
+    for (b = 0; b < rankA; b++) {
+      c_i = b;
+      Y[(jpvt[c_i] + (b_k << 2)) - 1] = B_0[(b_k << 3) + c_i];
+    }
+
+    for (minmn = rankA; minmn >= 1; minmn--) {
+      pj = jpvt[minmn - 1] - 1;
+      tauj = Y[(b_k << 2) + pj];
+      wj = Q[(((minmn - 1) << 3) + minmn) - 1];
+      scale = tauj / wj;
+      Y[pj + (b_k << 2)] = scale;
+      b = minmn - 2;
+      for (c_i = 0; c_i <= b; c_i++) {
+        Y[(jpvt[c_i] + (b_k << 2)) - 1] -= Q[((minmn - 1) << 3) + c_i] * Y[(b_k <<
+          2) + pj];
+      }
+    }
+  }
+}
+
+static void studentControllerInterface_step(studentControllerInterface_si_T *obj,
+  real_T t, real_T p_ball, real_T theta, real_T *V_servo, real_T x_p[4], real_T
+  P_p[16])
+{
+  __m128d tmp;
+  __m128d tmp_0;
   studentControllerInterface_si_T *obj_0;
+  real_T A[64];
+  real_T B[64];
+  real_T Z[64];
+  real_T M[32];
+  real_T N[32];
+  real_T N_0[32];
   real_T A_lin[16];
-  real_T P_p[16];
-  real_T b[16];
-  real_T b_y[16];
+  real_T G[16];
+  real_T W11[16];
+  real_T W21[16];
+  real_T W22[16];
   real_T K[8];
   real_T a[8];
   real_T b_0[8];
   real_T S[4];
-  real_T x_p[4];
+  real_T b[4];
   real_T y[2];
   real_T amp;
-  real_T amp_max;
+  real_T b_x;
   real_T br;
   real_T dt;
+  real_T omega_min;
   real_T p_vel;
   real_T theta_vel;
-  real_T u0;
   real_T x3;
   real_T xg_idx_0;
   real_T xg_idx_1;
-  real_T xg_idx_2;
   real_T xg_idx_3;
-  int32_T TWO;
-  int32_T r1;
+  int32_T A_lin_0;
+  int32_T ONE;
+  int32_T ib0;
+  int32_T ipk;
+  int32_T ix;
+  int32_T jj;
+  int32_T jm1;
+  int32_T jp1j;
+  int32_T jpiv;
+  int32_T jpiv_offset;
+  int32_T jprow;
+  int32_T mmj;
+  int8_T ipiv[8];
+  int8_T p[8];
   static const int8_T tmp_1[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
     1 };
+
+  /*         %% Main Controller Interface */
+  /*  State Estimation */
+  obj_0 = obj;
+
+  /*         %% State Estimation: Generic Time Stepping */
+  dt = t - obj_0->t_prev;
+  p_vel = (p_ball - obj_0->p_prev) / dt;
+  theta_vel = (theta - obj_0->theta_prev) / dt;
+  if (dt == 0.0) {
+    p_vel = 0.0;
+    theta_vel = 0.0;
+  }
+
+  xg_idx_0 = p_ball;
+  xg_idx_1 = p_vel;
+  xg_idx_3 = theta_vel;
+  obj_0 = obj;
+
+  /*         %% State Estimation: Extended Kalman Filter */
+  /*  Get some data */
+  y[0] = p_ball;
+  y[1] = theta;
+  dt = t - obj_0->t_prev;
+  x_p[2] = obj_0->x_hat[2];
+  x_p[3] = obj_0->x_hat[3];
+  if (dt > 0.0) {
+    /*  Calculate kalman states */
+    x3 = x_p[2];
+    p_vel = x_p[3];
+    theta_vel = rt_powd_snf(p_vel, 4.0);
+    br = rt_powd_snf(p_vel, 3.0);
+    p_vel = x3;
+    p_vel = cos(p_vel);
+    p_vel *= p_vel;
+    amp = x3;
+    amp = cos(amp);
+    b_x = x3;
+    b_x = sin(b_x);
+    x3 = cos(x3);
+    A_lin[1] = 0.0;
+    A_lin[5] = 0.0;
+    A_lin[9] = 0.0051 * amp * b_x * theta_vel + 0.4183 * x3;
+    A_lin[13] = -0.0102 * br * p_vel;
+    A_lin[0] = 0.0;
+    A_lin[2] = 0.0;
+    A_lin[3] = 0.0;
+    A_lin[4] = 1.0;
+    A_lin[6] = 0.0;
+    A_lin[7] = 0.0;
+    A_lin[8] = 0.0;
+    A_lin[10] = 0.0;
+    A_lin[11] = 0.0;
+    A_lin[12] = 0.0;
+    A_lin[14] = 1.0;
+    A_lin[15] = -40.0;
+
+    /*  Predict */
+    b[0] = obj_0->x_hat[0];
+    b[1] = obj_0->x_hat[1];
+    b[2] = obj_0->x_hat[2];
+    b[3] = obj_0->x_hat[3];
+    for (ix = 0; ix <= 2; ix += 2) {
+      tmp = _mm_loadu_pd(&A_lin[ix]);
+      tmp = _mm_mul_pd(tmp, _mm_set1_pd(b[0]));
+      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
+      tmp_0 = _mm_loadu_pd(&A_lin[ix + 4]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(b[1]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&A_lin[ix + 8]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(b[2]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&A_lin[ix + 12]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(b[3]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      _mm_storeu_pd(&x_p[ix], tmp);
+    }
+
+    b[0] = obj_0->B[0];
+    b[1] = obj_0->B[1];
+    b[2] = obj_0->B[2];
+    b[3] = obj_0->B[3];
+    omega_min = obj_0->V_servo;
+    theta_vel = x_p[0];
+    p_vel = b[0];
+    p_vel *= omega_min;
+    theta_vel += p_vel;
+    theta_vel *= dt;
+    x_p[0] = theta_vel;
+    theta_vel = x_p[1];
+    p_vel = b[1];
+    p_vel *= omega_min;
+    theta_vel += p_vel;
+    theta_vel *= dt;
+    x_p[1] = theta_vel;
+    theta_vel = x_p[2];
+    p_vel = b[2];
+    p_vel *= omega_min;
+    theta_vel += p_vel;
+    theta_vel *= dt;
+    x_p[2] = theta_vel;
+    theta_vel = x_p[3];
+    p_vel = b[3];
+    p_vel *= omega_min;
+    theta_vel += p_vel;
+    theta_vel *= dt;
+    x_p[3] = theta_vel;
+    theta_vel = x_p[0];
+    theta_vel += obj_0->x_hat[0];
+    x_p[0] = theta_vel;
+    theta_vel = x_p[1];
+    theta_vel += obj_0->x_hat[1];
+    x_p[1] = theta_vel;
+    theta_vel = x_p[2];
+    theta_vel += obj_0->x_hat[2];
+    x_p[2] = theta_vel;
+    theta_vel = x_p[3];
+    theta_vel += obj_0->x_hat[3];
+    x_p[3] = theta_vel;
+    for (ix = 0; ix < 16; ix++) {
+      W11[ix] = obj_0->P[ix];
+    }
+
+    for (ix = 0; ix < 4; ix++) {
+      for (A_lin_0 = 0; A_lin_0 <= 2; A_lin_0 += 2) {
+        _mm_storeu_pd(&P_p[A_lin_0 + (ix << 2)], _mm_set1_pd(0.0));
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0]);
+        tmp = _mm_mul_pd(_mm_set1_pd(W11[ix << 2]), tmp);
+        tmp_0 = _mm_loadu_pd(&P_p[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&P_p[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 4]);
+        tmp = _mm_mul_pd(_mm_set1_pd(W11[(ix << 2) + 1]), tmp);
+        tmp_0 = _mm_loadu_pd(&P_p[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&P_p[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 8]);
+        tmp = _mm_mul_pd(_mm_set1_pd(W11[(ix << 2) + 2]), tmp);
+        tmp_0 = _mm_loadu_pd(&P_p[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&P_p[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 12]);
+        tmp = _mm_mul_pd(_mm_set1_pd(W11[(ix << 2) + 3]), tmp);
+        tmp_0 = _mm_loadu_pd(&P_p[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&P_p[A_lin_0 + (ix << 2)], tmp);
+      }
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      G[ix] = obj_0->P[ix];
+    }
+
+    for (ix = 0; ix < 4; ix++) {
+      for (A_lin_0 = 0; A_lin_0 < 4; A_lin_0++) {
+        W11[ix + (A_lin_0 << 2)] = 0.0;
+        theta_vel = W11[(A_lin_0 << 2) + ix];
+        theta_vel += G[ix] * A_lin[A_lin_0];
+        W11[ix + (A_lin_0 << 2)] = theta_vel;
+        theta_vel = W11[(A_lin_0 << 2) + ix];
+        theta_vel += G[ix + 4] * A_lin[A_lin_0 + 4];
+        W11[ix + (A_lin_0 << 2)] = theta_vel;
+        theta_vel = W11[(A_lin_0 << 2) + ix];
+        theta_vel += G[ix + 8] * A_lin[A_lin_0 + 8];
+        W11[ix + (A_lin_0 << 2)] = theta_vel;
+        theta_vel = W11[(A_lin_0 << 2) + ix];
+        theta_vel += G[ix + 12] * A_lin[A_lin_0 + 12];
+        W11[ix + (A_lin_0 << 2)] = theta_vel;
+      }
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      theta_vel = P_p[ix];
+      A_lin_0 = tmp_1[ix];
+      theta_vel = (theta_vel + W11[ix]) + (real_T)A_lin_0;
+      theta_vel *= dt;
+      P_p[ix] = theta_vel;
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      theta_vel = P_p[ix];
+      theta_vel += obj_0->P[ix];
+      P_p[ix] = theta_vel;
+    }
+
+    for (ix = 0; ix < 8; ix++) {
+      a[ix] = obj_0->C[ix];
+    }
+
+    for (ix = 0; ix <= 0; ix += 2) {
+      tmp = _mm_loadu_pd(&a[ix]);
+      tmp = _mm_mul_pd(tmp, _mm_set1_pd(x_p[0]));
+      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
+      tmp_0 = _mm_loadu_pd(&a[ix + 2]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[1]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&a[ix + 4]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[2]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&a[ix + 6]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[3]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&y[ix]);
+      tmp = _mm_sub_pd(tmp_0, tmp);
+      _mm_storeu_pd(&y[ix], tmp);
+    }
+
+    for (ix = 0; ix < 8; ix++) {
+      b_0[ix] = obj_0->C[ix];
+    }
+
+    for (ix = 0; ix < 8; ix++) {
+      a[ix] = obj_0->C[ix];
+    }
+
+    for (ix = 0; ix < 2; ix++) {
+      for (A_lin_0 = 0; A_lin_0 < 4; A_lin_0++) {
+        K[ix + (A_lin_0 << 1)] = 0.0;
+        K[ix + (A_lin_0 << 1)] += P_p[A_lin_0 << 2] * a[ix];
+        K[ix + (A_lin_0 << 1)] += P_p[(A_lin_0 << 2) + 1] * a[ix + 2];
+        K[ix + (A_lin_0 << 1)] += P_p[(A_lin_0 << 2) + 2] * a[ix + 4];
+        K[ix + (A_lin_0 << 1)] += P_p[(A_lin_0 << 2) + 3] * a[ix + 6];
+      }
+
+      for (A_lin_0 = 0; A_lin_0 < 2; A_lin_0++) {
+        S[ix + (A_lin_0 << 1)] = 0.0;
+        dt = S[(A_lin_0 << 1) + ix];
+        dt += K[ix] * b_0[A_lin_0];
+        S[ix + (A_lin_0 << 1)] = dt;
+        dt = S[(A_lin_0 << 1) + ix];
+        dt += K[ix + 2] * b_0[A_lin_0 + 2];
+        S[ix + (A_lin_0 << 1)] = dt;
+        dt = S[(A_lin_0 << 1) + ix];
+        dt += K[ix + 4] * b_0[A_lin_0 + 4];
+        S[ix + (A_lin_0 << 1)] = dt;
+        dt = S[(A_lin_0 << 1) + ix];
+        dt += K[ix + 6] * b_0[A_lin_0 + 6];
+        S[ix + (A_lin_0 << 1)] = dt;
+      }
+    }
+
+    S[0]++;
+    S[3]++;
+    for (ix = 0; ix < 8; ix++) {
+      b_0[ix] = obj_0->C[ix];
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      G[ix] = obj_0->P[ix];
+    }
+
+    for (ix = 0; ix < 4; ix++) {
+      for (A_lin_0 = 0; A_lin_0 < 2; A_lin_0++) {
+        a[ix + (A_lin_0 << 2)] = 0.0;
+        a[ix + (A_lin_0 << 2)] += G[ix] * b_0[A_lin_0];
+        a[ix + (A_lin_0 << 2)] += G[ix + 4] * b_0[A_lin_0 + 2];
+        a[ix + (A_lin_0 << 2)] += G[ix + 8] * b_0[A_lin_0 + 4];
+        a[ix + (A_lin_0 << 2)] += G[ix + 12] * b_0[A_lin_0 + 6];
+      }
+    }
+
+    simulink_experiment_debug_mrdiv(a, S, K);
+    for (ix = 0; ix <= 2; ix += 2) {
+      tmp = _mm_loadu_pd(&K[ix]);
+      tmp = _mm_mul_pd(tmp, _mm_set1_pd(y[0]));
+      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
+      tmp_0 = _mm_loadu_pd(&K[ix + 4]);
+      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(y[1]));
+      tmp = _mm_add_pd(tmp_0, tmp);
+      tmp_0 = _mm_loadu_pd(&x_p[ix]);
+      tmp = _mm_add_pd(tmp_0, tmp);
+      _mm_storeu_pd(&x_p[ix], tmp);
+    }
+
+    obj_0->x_hat[0] = x_p[0];
+    obj_0->x_hat[1] = x_p[1];
+    obj_0->x_hat[2] = x_p[2];
+    obj_0->x_hat[3] = x_p[3];
+    for (ix = 0; ix < 8; ix++) {
+      b_0[ix] = obj_0->C[ix];
+    }
+
+    for (ix = 0; ix < 4; ix++) {
+      for (A_lin_0 = 0; A_lin_0 <= 2; A_lin_0 += 2) {
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], _mm_set1_pd(0.0));
+        tmp = _mm_loadu_pd(&K[A_lin_0]);
+        tmp = _mm_mul_pd(_mm_set1_pd(b_0[ix << 1]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&K[A_lin_0 + 4]);
+        tmp = _mm_mul_pd(_mm_set1_pd(b_0[(ix << 1) + 1]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+      }
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      A_lin[ix] = 0.0;
+    }
+
+    A_lin[0] = 1.0;
+    A_lin[5] = 1.0;
+    A_lin[10] = 1.0;
+    A_lin[15] = 1.0;
+    for (ix = 0; ix <= 14; ix += 2) {
+      tmp = _mm_loadu_pd(&A_lin[ix]);
+      tmp_0 = _mm_loadu_pd(&W11[ix]);
+      tmp = _mm_sub_pd(tmp, tmp_0);
+      _mm_storeu_pd(&A_lin[ix], tmp);
+    }
+
+    for (ix = 0; ix < 4; ix++) {
+      for (A_lin_0 = 0; A_lin_0 <= 2; A_lin_0 += 2) {
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], _mm_set1_pd(0.0));
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0]);
+        tmp = _mm_mul_pd(_mm_set1_pd(P_p[ix << 2]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 4]);
+        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(ix << 2) + 1]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 8]);
+        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(ix << 2) + 2]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+        tmp = _mm_loadu_pd(&A_lin[A_lin_0 + 12]);
+        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(ix << 2) + 3]), tmp);
+        tmp_0 = _mm_loadu_pd(&W11[(ix << 2) + A_lin_0]);
+        tmp = _mm_add_pd(tmp, tmp_0);
+        _mm_storeu_pd(&W11[A_lin_0 + (ix << 2)], tmp);
+      }
+    }
+
+    for (ix = 0; ix < 16; ix++) {
+      obj_0->P[ix] = W11[ix];
+    }
+  }
+
+  /*  Feedback Controller */
+  x_p[0] = obj->x_hat[0];
+  x_p[1] = obj->x_hat[1];
+  x_p[2] = obj->x_hat[2];
+  x_p[3] = obj->x_hat[3];
+  for (ix = 0; ix < 16; ix++) {
+    P_p[ix] = obj->P[ix];
+  }
+
+  /*  V_servo = stepImplP(obj, t, xk); */
+  obj_0 = obj;
+
+  /*         %% Feedback Controller: LQR */
+  /*  fetch the previous values */
+  if (t < 5.0) {
+    omega_min = 0.0;
+    dt = 0.0;
+  } else if (t < 61.85) {
+    br = t - 5.0;
+    x3 = br / 56.85;
+    if (x3 < 0.5) {
+      amp = x3 / 0.5 * 0.090000000000000011 + 0.05;
+      x3 = 0.11423973285781065 * br;
+      x3 = sin(x3);
+      x3 = 0.83775804095727813 * br - 0.2094395102393195 * x3 /
+        0.11423973285781065;
+      x3 = sin(x3);
+      b_x = 0.11423973285781065 * br;
+      b_x = sin(b_x);
+      b_x = 0.83775804095727813 * br - 0.2094395102393195 * b_x /
+        0.11423973285781065;
+      b_x = cos(b_x);
+      dt = 0.11423973285781065 * br;
+      dt = cos(dt);
+      dt = (0.83775804095727813 - 0.2094395102393195 * dt) * (amp * b_x) +
+        0.00316622691292876 * x3;
+    } else {
+      amp = 0.14;
+      x3 = 0.11423973285781065 * br;
+      x3 = sin(x3);
+      x3 = 0.83775804095727813 * br - 0.2094395102393195 * x3 /
+        0.11423973285781065;
+      x3 = cos(x3);
+      b_x = 0.11423973285781065 * br;
+      b_x = cos(b_x);
+      dt = (0.83775804095727813 - 0.2094395102393195 * b_x) * (0.14 * x3);
+    }
+
+    x3 = 0.11423973285781065 * br;
+    x3 = sin(x3);
+    x3 = 0.83775804095727813 * br - 0.2094395102393195 * x3 /
+      0.11423973285781065;
+    x3 = sin(x3);
+    omega_min = amp * x3;
+  } else if (t < 65.0) {
+    omega_min = 0.0;
+    dt = 0.0;
+  } else if (t < 85.0) {
+    p_vel = t - 65.0;
+    theta_vel = p_vel / 20.0;
+    if (theta_vel < 0.5) {
+      theta_vel = 0.05;
+    } else {
+      theta_vel = 0.1;
+    }
+
+    x3 = 0.62831853071795862 * p_vel;
+    x3 = sin(x3);
+    if (x3 < 0.0) {
+      x3 = -1.0;
+    } else {
+      x3 = (x3 > 0.0);
+    }
+
+    omega_min = theta_vel * x3;
+    dt = 0.0;
+  } else {
+    omega_min = 0.0;
+    dt = 0.0;
+  }
+
+  x3 = theta;
+  p_vel = xg_idx_3;
+  theta_vel = rt_powd_snf(p_vel, 4.0);
+  br = rt_powd_snf(p_vel, 3.0);
+  p_vel = x3;
+  p_vel = cos(p_vel);
+  p_vel *= p_vel;
+  amp = x3;
+  amp = cos(amp);
+  b_x = x3;
+  b_x = sin(b_x);
+  x3 = cos(x3);
+  A_lin[1] = 0.0;
+  A_lin[5] = 0.0;
+  A_lin[9] = 0.0051 * amp * b_x * theta_vel + 0.4183 * x3;
+  A_lin[13] = -0.0102 * br * p_vel;
+  omega_min += 0.008;
+  xg_idx_0 -= omega_min;
+  xg_idx_1 -= dt;
+  A_lin[0] = 0.0;
+  A_lin[2] = 0.0;
+  A_lin[3] = 0.0;
+  A_lin[4] = 1.0;
+  A_lin[6] = 0.0;
+  A_lin[7] = 0.0;
+  A_lin[8] = 0.0;
+  A_lin[10] = 0.0;
+  A_lin[11] = 0.0;
+  A_lin[12] = 0.0;
+  A_lin[14] = 1.0;
+  A_lin[15] = -40.0;
+  b[0] = obj_0->B[0];
+  b[1] = obj_0->B[1];
+  b[2] = obj_0->B[2];
+  b[3] = obj_0->B[3];
+  for (ix = 0; ix < 16; ix++) {
+    W11[ix] = obj_0->Q[ix];
+  }
+
+  p_vel = obj_0->R;
+
+  /* LQR_VIA_MATRIX_SIGN_FUNCTION Computes the LQR gain using matrix sign function method */
+  /*  */
+  /*    K = LQR_VIA_MATRIX_SIGN_FUNCTION(A, B, Q, R) returns the optimal gain matrix K */
+  /*    for the continuous-time LQR problem: */
+  /*  */
+  /*        minimize J = &#x222B; (x'Qx + u'Ru) dt */
+  /*        subject to dx/dt = Ax + Bu */
+  /*  */
+  /*    Inputs: */
+  /*        A - System dynamics matrix (n x n) */
+  /*        B - Input matrix (n x m) */
+  /*        Q - State cost matrix (n x n), symmetric positive semi-definite */
+  /*        R - Input cost matrix (m x m), symmetric positive definite */
+  /*  */
+  /*    Output: */
+  /*        K - Optimal state feedback gain matrix (m x n) */
+  /*  Invert R (assumes R is positive definite) */
+  theta_vel = 1.0 / p_vel;
+  S[0] = b[0] * theta_vel;
+  S[1] = b[1] * theta_vel;
+  S[2] = b[2] * theta_vel;
+  S[3] = b[3] * theta_vel;
+
+  /*  Construct the Hamiltonian matrix Z */
+  for (ix = 0; ix < 4; ix++) {
+    p_vel = b[ix];
+    dt = S[0] * p_vel;
+    Z[ix << 3] = A_lin[ix << 2];
+    Z[(ix + 4) << 3] = -dt;
+    Z[(ix << 3) + 4] = -W11[ix << 2];
+    Z[((ix + 4) << 3) + 4] = -A_lin[ix];
+    dt = S[1] * p_vel;
+    Z[(ix << 3) + 1] = A_lin[(ix << 2) + 1];
+    Z[((ix + 4) << 3) + 1] = -dt;
+    Z[(ix << 3) + 5] = -W11[(ix << 2) + 1];
+    Z[((ix + 4) << 3) + 5] = -A_lin[ix + 4];
+    dt = S[2] * p_vel;
+    Z[(ix << 3) + 2] = A_lin[(ix << 2) + 2];
+    Z[((ix + 4) << 3) + 2] = -dt;
+    Z[(ix << 3) + 6] = -W11[(ix << 2) + 2];
+    Z[((ix + 4) << 3) + 6] = -A_lin[ix + 8];
+    dt = S[3] * p_vel;
+    Z[(ix << 3) + 3] = A_lin[(ix << 2) + 3];
+    Z[((ix + 4) << 3) + 3] = -dt;
+    Z[(ix << 3) + 7] = -W11[(ix << 2) + 3];
+    Z[((ix + 4) << 3) + 7] = -A_lin[ix + 12];
+  }
+
+  /*  Initialize matrix W for iteration */
+  /*  W = Z; */
+  /*  Newton iteration to compute the matrix sign function */
+  for (A_lin_0 = 0; A_lin_0 < 1000; A_lin_0++) {
+    for (ix = 0; ix < 64; ix++) {
+      A[ix] = Z[ix];
+      B[ix] = 0.0;
+    }
+
+    for (ix = 0; ix < 8; ix++) {
+      ipiv[ix] = (int8_T)(ix + 1);
+    }
+
+    for (ib0 = 0; ib0 < 7; ib0++) {
+      ipk = ib0 + 1;
+      jm1 = ipk - 1;
+      mmj = 8 - ipk;
+      jprow = jm1 * 9;
+      jj = jprow + 1;
+      jp1j = jj + 1;
+      jprow = mmj + 1;
+      ONE = 1;
+      ix = jj - 1;
+      x3 = A[jj - 1];
+      dt = fabs(x3);
+      omega_min = dt;
+      for (jpiv = 2; jpiv <= jprow; jpiv++) {
+        ix++;
+        x3 = A[ix];
+        dt = fabs(x3);
+        if (dt > omega_min) {
+          ONE = jpiv;
+          omega_min = dt;
+        }
+      }
+
+      jpiv_offset = ONE - 1;
+      jpiv = (jj + jpiv_offset) - 1;
+      if (A[jpiv] != 0.0) {
+        if (jpiv_offset != 0) {
+          jprow = ipk + jpiv_offset;
+          ipiv[ipk - 1] = (int8_T)jprow;
+          ONE = jm1;
+          jprow = ONE + jpiv_offset;
+          for (jpiv = 0; jpiv < 8; jpiv++) {
+            x3 = A[ONE];
+            A[ONE] = A[jprow];
+            A[jprow] = x3;
+            ONE += 8;
+            jprow += 8;
+          }
+        }
+
+        jprow = mmj - 1;
+        jpiv_offset = jp1j + jprow;
+        for (ix = jp1j; ix <= jpiv_offset; ix++) {
+          x3 = A[ix - 1];
+          dt = A[jj - 1];
+          dt = x3 / dt;
+          A[ix - 1] = dt;
+        }
+      }
+
+      jprow = 7 - ipk;
+      ONE = jj + 7;
+      jj += 9;
+      jm1 = jj - 1;
+      for (ipk = 0; ipk <= jprow; ipk++) {
+        x3 = A[ONE];
+        if (x3 != 0.0) {
+          x3 = -x3;
+          ix = jp1j - 1;
+          jpiv_offset = jm1 + 1;
+          jj = mmj + jm1;
+          for (jpiv = jpiv_offset; jpiv <= jj; jpiv++) {
+            A[jpiv - 1] += A[ix] * x3;
+            ix++;
+          }
+        }
+
+        ONE += 8;
+        jm1 += 8;
+      }
+    }
+
+    for (ix = 0; ix < 8; ix++) {
+      p[ix] = (int8_T)(ix + 1);
+    }
+
+    for (ib0 = 0; ib0 < 7; ib0++) {
+      dt = (real_T)ib0 + 1.0;
+      ipk = ipiv[(int32_T)dt - 1] - 1;
+      if (ipk + 1 > (int32_T)dt) {
+        jpiv_offset = p[ipk];
+        p[ipk] = p[(int32_T)dt - 1];
+        p[(int32_T)dt - 1] = (int8_T)jpiv_offset;
+      }
+    }
+
+    for (ib0 = 0; ib0 < 8; ib0++) {
+      jpiv = ib0;
+      jprow = p[jpiv] - 1;
+      B[jpiv + (jprow << 3)] = 1.0;
+      for (ipk = jpiv + 1; ipk < 9; ipk++) {
+        if (B[((jprow << 3) + ipk) - 1] != 0.0) {
+          jpiv_offset = ipk + 1;
+          for (ix = jpiv_offset; ix < 9; ix++) {
+            B[(ix + (jprow << 3)) - 1] -= A[(((ipk - 1) << 3) + ix) - 1] * B
+              [((jprow << 3) + ipk) - 1];
+          }
+        }
+      }
+    }
+
+    for (ib0 = 0; ib0 < 8; ib0++) {
+      ipk = ib0;
+      jm1 = ipk << 3;
+      for (jpiv = 7; jpiv >= 0; jpiv--) {
+        mmj = jpiv << 3;
+        if (B[jpiv + jm1] != 0.0) {
+          B[jpiv + jm1] /= A[jpiv + mmj];
+          jpiv_offset = jpiv - 1;
+          for (ipk = 0; ipk <= jpiv_offset; ipk++) {
+            ix = ipk;
+            B[ix + jm1] -= B[jpiv + jm1] * A[ix + mmj];
+          }
+        }
+      }
+    }
+
+    for (ix = 0; ix <= 62; ix += 2) {
+      tmp = _mm_loadu_pd(&Z[ix]);
+      tmp_0 = _mm_loadu_pd(&B[ix]);
+      tmp_0 = _mm_sub_pd(tmp, tmp_0);
+      tmp_0 = _mm_mul_pd(_mm_set1_pd(0.5), tmp_0);
+      tmp = _mm_sub_pd(tmp, tmp_0);
+      _mm_storeu_pd(&Z[ix], tmp);
+      _mm_storeu_pd(&B[ix], tmp_0);
+    }
+  }
+
+  /*  Determine the size of the system */
+  /*  Partition W into 4 submatrices */
+  for (ix = 0; ix < 4; ix++) {
+    W11[ix << 2] = Z[ix << 3];
+    G[ix << 2] = Z[(ix + 4) << 3];
+    W21[ix << 2] = Z[(ix << 3) + 4];
+    W22[ix << 2] = Z[((ix + 4) << 3) + 4];
+    W11[(ix << 2) + 1] = Z[(ix << 3) + 1];
+    G[(ix << 2) + 1] = Z[((ix + 4) << 3) + 1];
+    W21[(ix << 2) + 1] = Z[(ix << 3) + 5];
+    W22[(ix << 2) + 1] = Z[((ix + 4) << 3) + 5];
+    W11[(ix << 2) + 2] = Z[(ix << 3) + 2];
+    G[(ix << 2) + 2] = Z[((ix + 4) << 3) + 2];
+    W21[(ix << 2) + 2] = Z[(ix << 3) + 6];
+    W22[(ix << 2) + 2] = Z[((ix + 4) << 3) + 6];
+    W11[(ix << 2) + 3] = Z[(ix << 3) + 3];
+    G[(ix << 2) + 3] = Z[((ix + 4) << 3) + 3];
+    W21[(ix << 2) + 3] = Z[(ix << 3) + 7];
+    W22[(ix << 2) + 3] = Z[((ix + 4) << 3) + 7];
+  }
+
+  /*  Solve for the unique positive semidefinite solution P to the Riccati equation */
+  for (ix = 0; ix < 16; ix++) {
+    A_lin[ix] = 0.0;
+  }
+
+  for (ib0 = 0; ib0 < 4; ib0++) {
+    jpiv = ib0;
+    A_lin[jpiv + (jpiv << 2)] = 1.0;
+    M[ib0 << 3] = G[ib0 << 2];
+    M[(ib0 << 3) + 1] = G[(ib0 << 2) + 1];
+    M[(ib0 << 3) + 2] = G[(ib0 << 2) + 2];
+    M[(ib0 << 3) + 3] = G[(ib0 << 2) + 3];
+    M[(ib0 << 3) + 4] = W22[ib0 << 2] + A_lin[ib0 << 2];
+    M[(ib0 << 3) + 5] = W22[(ib0 << 2) + 1] + A_lin[(ib0 << 2) + 1];
+    M[(ib0 << 3) + 6] = W22[(ib0 << 2) + 2] + A_lin[(ib0 << 2) + 2];
+    M[(ib0 << 3) + 7] = W22[(ib0 << 2) + 3] + A_lin[(ib0 << 2) + 3];
+  }
+
+  for (ix = 0; ix < 16; ix++) {
+    A_lin[ix] = 0.0;
+  }
+
+  A_lin[0] = 1.0;
+  A_lin[5] = 1.0;
+  A_lin[10] = 1.0;
+  A_lin[15] = 1.0;
+  for (ix = 0; ix < 4; ix++) {
+    N[ix << 3] = W11[ix << 2] + A_lin[ix << 2];
+    N[(ix << 3) + 4] = W21[ix << 2];
+    N[(ix << 3) + 1] = W11[(ix << 2) + 1] + A_lin[(ix << 2) + 1];
+    N[(ix << 3) + 5] = W21[(ix << 2) + 1];
+    N[(ix << 3) + 2] = W11[(ix << 2) + 2] + A_lin[(ix << 2) + 2];
+    N[(ix << 3) + 6] = W21[(ix << 2) + 2];
+    N[(ix << 3) + 3] = W11[(ix << 2) + 3] + A_lin[(ix << 2) + 3];
+    N[(ix << 3) + 7] = W21[(ix << 2) + 3];
+  }
+
+  for (ix = 0; ix <= 30; ix += 2) {
+    tmp = _mm_loadu_pd(&N[ix]);
+    tmp = _mm_mul_pd(tmp, _mm_set1_pd(-1.0));
+    _mm_storeu_pd(&N_0[ix], tmp);
+  }
+
+  simulink_experiment_de_mldivide(M, N_0, A_lin);
+
+  /*  Compute the optimal LQR gain */
+  p_vel = b[0];
+  p_vel *= theta_vel;
+  b[0] = p_vel;
+  p_vel = b[1];
+  p_vel *= theta_vel;
+  b[1] = p_vel;
+  p_vel = b[2];
+  p_vel *= theta_vel;
+  b[2] = p_vel;
+  p_vel = b[3];
+  p_vel *= theta_vel;
+  b[3] = p_vel;
+  for (ix = 0; ix < 4; ix++) {
+    dt = A_lin[ix << 2] * b[0];
+    dt += A_lin[(ix << 2) + 1] * b[1];
+    dt += A_lin[(ix << 2) + 2] * b[2];
+    dt += A_lin[(ix << 2) + 3] * b[3];
+    S[ix] = dt;
+  }
+
+  /*  coder.extrinsic('lqr') */
+  /*  K = [8.6603 10.0662 2.4465 0.0586]; */
+  /*  K = lqr(A_lin, obj.B, obj.Q, obj.R); */
+  /*  disp(K) */
+  S[0] = -S[0];
+  S[1] = -S[1];
+  S[2] = -S[2];
+  S[3] = -S[3];
+  *V_servo = S[0] * xg_idx_0;
+  *V_servo += S[1] * xg_idx_1;
+  *V_servo += S[2] * theta;
+  *V_servo += S[3] * xg_idx_3;
+
+  /*  V_servo = stepImplLQG(obj, t, xg); */
+  p_vel = *V_servo - obj->V_servo;
+  dt = fabs(p_vel);
+  if (dt > 0.04) {
+    if (rtIsNaN(p_vel)) {
+      p_vel = (rtNaN);
+    } else if (p_vel < 0.0) {
+      p_vel = -1.0;
+    } else {
+      p_vel = (p_vel > 0.0);
+    }
+
+    *V_servo = 0.04 * p_vel + obj->V_servo;
+  } else {
+    dt = fabs(p_vel);
+    if (dt > 0.0025) {
+      *V_servo = obj->V_servo;
+    }
+  }
+
+  if (*V_servo > 5.0) {
+    *V_servo = 5.0;
+  } else if (*V_servo < -5.0) {
+    *V_servo = -5.0;
+  }
+
+  obj->V_servo = *V_servo;
+  obj->t_prev = t;
+  obj->p_prev = p_ball;
+  obj->theta_prev = theta;
+}
+
+/* Model output function for TID0 */
+void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] */
+{
+  studentControllerInterface_si_T *obj;
+  real_T tmp_0[16];
+  real_T tmp[4];
+  real_T amplitude;
+  real_T b_varargout_1;
+  real_T u1;
+  real_T u2;
 
   {                                    /* Sample time: [0.0s, 0.0s] */
     rate_monotonic_scheduler();
@@ -229,539 +1606,39 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     simulink_experiment_debug_ty_M->Timing.t[0];
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  u0 = simulink_experiment_debug_typ_B.Clock;
-  xg_idx_0 = simulink_experiment_debug_typ_B.BB01SensorGainmV;
-  xg_idx_2 = simulink_experiment_debug_typ_B.Bias;
+  amplitude = simulink_experiment_debug_typ_B.Clock;
+  u1 = simulink_experiment_debug_typ_B.BB01SensorGainmV;
+  u2 = simulink_experiment_debug_typ_B.Bias;
   obj = &simulink_experiment_debug_ty_DW.obj;
-
-  /*         %% Main Controller Interface */
-  /*  State Estimation */
-  obj_0 = obj;
-
-  /*         %% State Estimation: Generic Time Stepping */
-  dt = u0 - obj_0->t_prev;
-  p_vel = (xg_idx_0 - obj_0->p_prev) / dt;
-  theta_vel = (xg_idx_2 - obj_0->theta_prev) / dt;
-  if (dt == 0.0) {
-    p_vel = 0.0;
-    theta_vel = 0.0;
-  }
-
-  xg_idx_1 = p_vel;
-  xg_idx_3 = theta_vel;
-  obj_0 = obj;
-
-  /*         %% State Estimation: Extended Kalman Filter */
-  /*  Get some data */
-  y[0] = xg_idx_0;
-  y[1] = xg_idx_2;
-  dt = u0 - obj_0->t_prev;
-  x_p[2] = obj_0->x_hat[2];
-  x_p[3] = obj_0->x_hat[3];
-  if (dt > 0.0) {
-    /*  Calculate kalman states */
-    x3 = x_p[2];
-    theta_vel = x_p[3];
-    p_vel = rt_powd_snf(theta_vel, 4.0);
-    br = rt_powd_snf(theta_vel, 3.0);
-    theta_vel = x3;
-    theta_vel = cos(theta_vel);
-    theta_vel *= theta_vel;
-    amp_max = x3;
-    amp_max = cos(amp_max);
-    amp = x3;
-    amp = sin(amp);
-    x3 = cos(x3);
-    A_lin[1] = 0.0;
-    A_lin[5] = 0.0;
-    A_lin[9] = 0.0051 * amp_max * amp * p_vel + 0.4183 * x3;
-    A_lin[13] = -0.0102 * br * theta_vel;
-    A_lin[0] = 0.0;
-    A_lin[2] = 0.0;
-    A_lin[3] = 0.0;
-    A_lin[4] = 1.0;
-    A_lin[6] = 0.0;
-    A_lin[7] = 0.0;
-    A_lin[8] = 0.0;
-    A_lin[10] = 0.0;
-    A_lin[11] = 0.0;
-    A_lin[12] = 0.0;
-    A_lin[14] = 1.0;
-    A_lin[15] = -40.0;
-
-    /*  Predict */
-    S[0] = obj_0->x_hat[0];
-    S[1] = obj_0->x_hat[1];
-    S[2] = obj_0->x_hat[2];
-    S[3] = obj_0->x_hat[3];
-    for (TWO = 0; TWO <= 2; TWO += 2) {
-      tmp = _mm_loadu_pd(&A_lin[TWO]);
-      tmp = _mm_mul_pd(tmp, _mm_set1_pd(S[0]));
-      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
-      tmp_0 = _mm_loadu_pd(&A_lin[TWO + 4]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(S[1]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&A_lin[TWO + 8]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(S[2]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&A_lin[TWO + 12]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(S[3]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      _mm_storeu_pd(&x_p[TWO], tmp);
-    }
-
-    S[0] = obj_0->B[0];
-    S[1] = obj_0->B[1];
-    S[2] = obj_0->B[2];
-    S[3] = obj_0->B[3];
-    br = obj_0->V_servo;
-    theta_vel = x_p[0];
-    x3 = S[0];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[0] = theta_vel;
-    theta_vel = x_p[1];
-    x3 = S[1];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[1] = theta_vel;
-    theta_vel = x_p[2];
-    x3 = S[2];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[2] = theta_vel;
-    theta_vel = x_p[3];
-    x3 = S[3];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[3] = theta_vel;
-    theta_vel = x_p[0];
-    theta_vel += obj_0->x_hat[0];
-    x_p[0] = theta_vel;
-    theta_vel = x_p[1];
-    theta_vel += obj_0->x_hat[1];
-    x_p[1] = theta_vel;
-    theta_vel = x_p[2];
-    theta_vel += obj_0->x_hat[2];
-    x_p[2] = theta_vel;
-    theta_vel = x_p[3];
-    theta_vel += obj_0->x_hat[3];
-    x_p[3] = theta_vel;
-    for (TWO = 0; TWO < 16; TWO++) {
-      b[TWO] = obj_0->P[TWO];
-    }
-
-    for (TWO = 0; TWO < 4; TWO++) {
-      for (r1 = 0; r1 <= 2; r1 += 2) {
-        _mm_storeu_pd(&P_p[r1 + (TWO << 2)], _mm_set1_pd(0.0));
-        tmp = _mm_loadu_pd(&A_lin[r1]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b[TWO << 2]), tmp);
-        tmp_0 = _mm_loadu_pd(&P_p[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&P_p[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 4]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b[(TWO << 2) + 1]), tmp);
-        tmp_0 = _mm_loadu_pd(&P_p[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&P_p[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 8]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b[(TWO << 2) + 2]), tmp);
-        tmp_0 = _mm_loadu_pd(&P_p[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&P_p[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 12]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b[(TWO << 2) + 3]), tmp);
-        tmp_0 = _mm_loadu_pd(&P_p[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&P_p[r1 + (TWO << 2)], tmp);
-      }
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      b_y[TWO] = obj_0->P[TWO];
-    }
-
-    for (TWO = 0; TWO < 4; TWO++) {
-      for (r1 = 0; r1 < 4; r1++) {
-        b[TWO + (r1 << 2)] = 0.0;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO] * A_lin[r1];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 4] * A_lin[r1 + 4];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 8] * A_lin[r1 + 8];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 12] * A_lin[r1 + 12];
-        b[TWO + (r1 << 2)] = x3;
-      }
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      theta_vel = P_p[TWO];
-      r1 = tmp_1[TWO];
-      theta_vel = (theta_vel + b[TWO]) + (real_T)r1;
-      theta_vel *= dt;
-      P_p[TWO] = theta_vel;
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      theta_vel = P_p[TWO];
-      theta_vel += obj_0->P[TWO];
-      P_p[TWO] = theta_vel;
-    }
-
-    for (TWO = 0; TWO < 8; TWO++) {
-      a[TWO] = obj_0->C[TWO];
-    }
-
-    for (TWO = 0; TWO <= 0; TWO += 2) {
-      tmp = _mm_loadu_pd(&a[TWO]);
-      tmp = _mm_mul_pd(tmp, _mm_set1_pd(x_p[0]));
-      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
-      tmp_0 = _mm_loadu_pd(&a[TWO + 2]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[1]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&a[TWO + 4]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[2]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&a[TWO + 6]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(x_p[3]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&y[TWO]);
-      tmp = _mm_sub_pd(tmp_0, tmp);
-      _mm_storeu_pd(&y[TWO], tmp);
-    }
-
-    for (TWO = 0; TWO < 8; TWO++) {
-      b_0[TWO] = obj_0->C[TWO];
-    }
-
-    for (TWO = 0; TWO < 8; TWO++) {
-      a[TWO] = obj_0->C[TWO];
-    }
-
-    for (TWO = 0; TWO < 2; TWO++) {
-      for (r1 = 0; r1 < 4; r1++) {
-        K[TWO + (r1 << 1)] = 0.0;
-        K[TWO + (r1 << 1)] += P_p[r1 << 2] * a[TWO];
-        K[TWO + (r1 << 1)] += P_p[(r1 << 2) + 1] * a[TWO + 2];
-        K[TWO + (r1 << 1)] += P_p[(r1 << 2) + 2] * a[TWO + 4];
-        K[TWO + (r1 << 1)] += P_p[(r1 << 2) + 3] * a[TWO + 6];
-      }
-
-      for (r1 = 0; r1 < 2; r1++) {
-        S[TWO + (r1 << 1)] = 0.0;
-        dt = S[(r1 << 1) + TWO];
-        dt += K[TWO] * b_0[r1];
-        S[TWO + (r1 << 1)] = dt;
-        dt = S[(r1 << 1) + TWO];
-        dt += K[TWO + 2] * b_0[r1 + 2];
-        S[TWO + (r1 << 1)] = dt;
-        dt = S[(r1 << 1) + TWO];
-        dt += K[TWO + 4] * b_0[r1 + 4];
-        S[TWO + (r1 << 1)] = dt;
-        dt = S[(r1 << 1) + TWO];
-        dt += K[TWO + 6] * b_0[r1 + 6];
-        S[TWO + (r1 << 1)] = dt;
-      }
-    }
-
-    S[0]++;
-    S[3]++;
-    for (TWO = 0; TWO < 8; TWO++) {
-      b_0[TWO] = obj_0->C[TWO];
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      b_y[TWO] = obj_0->P[TWO];
-    }
-
-    for (TWO = 0; TWO < 4; TWO++) {
-      for (r1 = 0; r1 < 2; r1++) {
-        a[TWO + (r1 << 2)] = 0.0;
-        a[TWO + (r1 << 2)] += b_y[TWO] * b_0[r1];
-        a[TWO + (r1 << 2)] += b_y[TWO + 4] * b_0[r1 + 2];
-        a[TWO + (r1 << 2)] += b_y[TWO + 8] * b_0[r1 + 4];
-        a[TWO + (r1 << 2)] += b_y[TWO + 12] * b_0[r1 + 6];
-      }
-    }
-
-    TWO = 1;
-    dt = S[1];
-    p_vel = fabs(dt);
-    theta_vel = p_vel;
-    dt = S[0];
-    p_vel = fabs(dt);
-    if (theta_vel > p_vel) {
-      r1 = 1;
-      TWO = 0;
-    } else {
-      r1 = 0;
-    }
-
-    p_vel = S[TWO] / S[r1];
-    theta_vel = S[TWO + 2] - S[r1 + 2] * p_vel;
-    K[r1 << 2] = a[0] / S[r1];
-    K[TWO << 2] = (a[4] - K[r1 << 2] * S[r1 + 2]) / theta_vel;
-    K[r1 << 2] -= K[TWO << 2] * p_vel;
-    K[(r1 << 2) + 1] = a[1] / S[r1];
-    K[(TWO << 2) + 1] = (a[5] - K[(r1 << 2) + 1] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 1] -= K[(TWO << 2) + 1] * p_vel;
-    K[(r1 << 2) + 2] = a[2] / S[r1];
-    K[(TWO << 2) + 2] = (a[6] - K[(r1 << 2) + 2] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 2] -= K[(TWO << 2) + 2] * p_vel;
-    K[(r1 << 2) + 3] = a[3] / S[r1];
-    K[(TWO << 2) + 3] = (a[7] - K[(r1 << 2) + 3] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 3] -= K[(TWO << 2) + 3] * p_vel;
-    for (TWO = 0; TWO <= 2; TWO += 2) {
-      tmp = _mm_loadu_pd(&K[TWO]);
-      tmp = _mm_mul_pd(tmp, _mm_set1_pd(y[0]));
-      tmp = _mm_add_pd(tmp, _mm_set1_pd(0.0));
-      tmp_0 = _mm_loadu_pd(&K[TWO + 4]);
-      tmp_0 = _mm_mul_pd(tmp_0, _mm_set1_pd(y[1]));
-      tmp = _mm_add_pd(tmp_0, tmp);
-      tmp_0 = _mm_loadu_pd(&x_p[TWO]);
-      tmp = _mm_add_pd(tmp_0, tmp);
-      _mm_storeu_pd(&x_p[TWO], tmp);
-    }
-
-    obj_0->x_hat[0] = x_p[0];
-    obj_0->x_hat[1] = x_p[1];
-    obj_0->x_hat[2] = x_p[2];
-    obj_0->x_hat[3] = x_p[3];
-    for (TWO = 0; TWO < 8; TWO++) {
-      b_0[TWO] = obj_0->C[TWO];
-    }
-
-    for (TWO = 0; TWO < 4; TWO++) {
-      for (r1 = 0; r1 <= 2; r1 += 2) {
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], _mm_set1_pd(0.0));
-        tmp = _mm_loadu_pd(&K[r1]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b_0[TWO << 1]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&K[r1 + 4]);
-        tmp = _mm_mul_pd(_mm_set1_pd(b_0[(TWO << 1) + 1]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-      }
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      A_lin[TWO] = 0.0;
-    }
-
-    A_lin[0] = 1.0;
-    A_lin[5] = 1.0;
-    A_lin[10] = 1.0;
-    A_lin[15] = 1.0;
-    for (TWO = 0; TWO <= 14; TWO += 2) {
-      tmp = _mm_loadu_pd(&A_lin[TWO]);
-      tmp_0 = _mm_loadu_pd(&b[TWO]);
-      tmp = _mm_sub_pd(tmp, tmp_0);
-      _mm_storeu_pd(&A_lin[TWO], tmp);
-    }
-
-    for (TWO = 0; TWO < 4; TWO++) {
-      for (r1 = 0; r1 <= 2; r1 += 2) {
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], _mm_set1_pd(0.0));
-        tmp = _mm_loadu_pd(&A_lin[r1]);
-        tmp = _mm_mul_pd(_mm_set1_pd(P_p[TWO << 2]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 4]);
-        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(TWO << 2) + 1]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 8]);
-        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(TWO << 2) + 2]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-        tmp = _mm_loadu_pd(&A_lin[r1 + 12]);
-        tmp = _mm_mul_pd(_mm_set1_pd(P_p[(TWO << 2) + 3]), tmp);
-        tmp_0 = _mm_loadu_pd(&b[(TWO << 2) + r1]);
-        tmp = _mm_add_pd(tmp, tmp_0);
-        _mm_storeu_pd(&b[r1 + (TWO << 2)], tmp);
-      }
-    }
-
-    for (TWO = 0; TWO < 16; TWO++) {
-      obj_0->P[TWO] = b[TWO];
-    }
-  }
-
-  /*  Feedback Controller */
-  x_p[0] = obj->x_hat[0];
-  x_p[1] = obj->x_hat[1];
-  x_p[2] = obj->x_hat[2];
-  x_p[3] = obj->x_hat[3];
-  for (TWO = 0; TWO < 16; TWO++) {
-    P_p[TWO] = obj->P[TWO];
-  }
-
-  /*  V_servo = stepImplP(obj, t, xk); */
-  /*         %% Feedback Controller: LQR */
-  /*  fetch the previous values */
-  if (u0 < 5.0) {
-    p_vel = 0.0;
-    amp_max = 0.0;
-  } else if (u0 < 61.85) {
-    x3 = u0 - 5.0;
-    dt = x3 / 56.85;
-    if (dt < 0.5) {
-      amp = dt / 0.5 * 0.090000000000000011 + 0.05;
-      dt = 0.11423973285781065 * x3;
-      dt = sin(dt);
-      dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
-        0.11423973285781065;
-      dt = sin(dt);
-      theta_vel = 0.11423973285781065 * x3;
-      theta_vel = sin(theta_vel);
-      theta_vel = 0.83775804095727813 * x3 - 0.2094395102393195 * theta_vel /
-        0.11423973285781065;
-      theta_vel = cos(theta_vel);
-      br = 0.11423973285781065 * x3;
-      br = cos(br);
-      amp_max = (0.83775804095727813 - 0.2094395102393195 * br) * (amp *
-        theta_vel) + 0.00316622691292876 * dt;
-    } else {
-      amp = 0.14;
-      dt = 0.11423973285781065 * x3;
-      dt = sin(dt);
-      dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
-        0.11423973285781065;
-      dt = cos(dt);
-      theta_vel = 0.11423973285781065 * x3;
-      theta_vel = cos(theta_vel);
-      amp_max = (0.83775804095727813 - 0.2094395102393195 * theta_vel) * (0.14 *
-        dt);
-    }
-
-    dt = 0.11423973285781065 * x3;
-    dt = sin(dt);
-    dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
-      0.11423973285781065;
-    dt = sin(dt);
-    p_vel = amp * dt;
-  } else if (u0 < 65.0) {
-    p_vel = 0.0;
-    amp_max = 0.0;
-  } else if (u0 < 85.0) {
-    p_vel = u0 - 65.0;
-    theta_vel = p_vel / 20.0;
-    if (theta_vel < 0.5) {
-      theta_vel = 0.05;
-    } else {
-      theta_vel = 0.1;
-    }
-
-    dt = 0.62831853071795862 * p_vel;
-    dt = sin(dt);
-    if (dt < 0.0) {
-      dt = -1.0;
-    } else {
-      dt = (dt > 0.0);
-    }
-
-    p_vel = theta_vel * dt;
-    amp_max = 0.0;
-  } else {
-    p_vel = 0.0;
-    amp_max = 0.0;
-  }
-
-  dt = xg_idx_0 - p_vel;
-  xg_idx_1 -= amp_max;
-
-  /*  coder.extrinsic('lqr') */
-  /*  K = lqr(A_lin, obj.B, obj.Q, obj.R); */
-  /*  dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q); */
-  /*  P = dt*dP + obj.P; */
-  /*   */
-  /*  K = inv(obj.R)*(obj.B'*P); */
-  /*   */
-  /*  obj.P = P; */
-  /*              P = eye(4); */
-  /*             [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]); */
-  /*  K = inv(obj.R)*(obj.B'*P); */
-  /*  disp(K) */
-  theta_vel = -8.6603 * dt;
-  dt = xg_idx_1;
-  theta_vel += -10.0662 * dt;
-  dt = xg_idx_2;
-  theta_vel += -2.4465 * dt;
-  dt = xg_idx_3;
-  theta_vel += -0.0586 * dt;
-
-  /*  V_servo = stepImplLQG(obj, t, xg); */
-  dt = theta_vel - obj->V_servo;
-  p_vel = fabs(dt);
-  if (p_vel > 0.04) {
-    if (rtIsNaN(dt)) {
-      dt = (rtNaN);
-    } else if (dt < 0.0) {
-      dt = -1.0;
-    } else {
-      dt = (dt > 0.0);
-    }
-
-    theta_vel = 0.04 * dt + obj->V_servo;
-  } else {
-    p_vel = fabs(dt);
-    if (p_vel > 0.005) {
-      theta_vel = obj->V_servo;
-    }
-  }
-
-  if (theta_vel > 5.0) {
-    theta_vel = 5.0;
-  } else if (theta_vel < -5.0) {
-    theta_vel = -5.0;
-  }
-
-  obj->V_servo = theta_vel;
-  obj->t_prev = u0;
-  obj->p_prev = xg_idx_0;
-  obj->theta_prev = xg_idx_2;
+  studentControllerInterface_step(obj, amplitude, u1, u2, &b_varargout_1, tmp,
+    tmp_0);
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  simulink_experiment_debug_typ_B.MATLABSystem_o1 = theta_vel;
+  simulink_experiment_debug_typ_B.MATLABSystem_o1 = b_varargout_1;
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[0] = x_p[0];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[1] = x_p[1];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[2] = x_p[2];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[3] = x_p[3];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[0] = tmp[0];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[1] = tmp[1];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[2] = tmp[2];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[3] = tmp[3];
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  memcpy(&simulink_experiment_debug_typ_B.MATLABSystem_o3[0], &P_p[0], sizeof
+  memcpy(&simulink_experiment_debug_typ_B.MATLABSystem_o3[0], &tmp_0[0], sizeof
          (real_T) << 4U);
 
   /* Saturate: '<Root>/+//-10V' */
-  u0 = simulink_experiment_debug_typ_B.MATLABSystem_o1;
-  xg_idx_0 = simulink_experiment_debug_typ_P.u0V_LowerSat;
-  xg_idx_1 = simulink_experiment_debug_typ_P.u0V_UpperSat;
-  if (u0 > xg_idx_1) {
+  amplitude = simulink_experiment_debug_typ_B.MATLABSystem_o1;
+  u1 = simulink_experiment_debug_typ_P.u0V_LowerSat;
+  u2 = simulink_experiment_debug_typ_P.u0V_UpperSat;
+  if (amplitude > u2) {
     /* Saturate: '<Root>/+//-10V' */
-    simulink_experiment_debug_typ_B.u0V = xg_idx_1;
-  } else if (u0 < xg_idx_0) {
+    simulink_experiment_debug_typ_B.u0V = u2;
+  } else if (amplitude < u1) {
     /* Saturate: '<Root>/+//-10V' */
-    simulink_experiment_debug_typ_B.u0V = xg_idx_0;
+    simulink_experiment_debug_typ_B.u0V = u1;
   } else {
     /* Saturate: '<Root>/+//-10V' */
-    simulink_experiment_debug_typ_B.u0V = u0;
+    simulink_experiment_debug_typ_B.u0V = amplitude;
   }
 
   /* End of Saturate: '<Root>/+//-10V' */
@@ -794,19 +1671,19 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     simulink_experiment_debug_typ_B.v_ref = 0.0;
     simulink_experiment_debug_typ_B.a_ref = 0.0;
   } else if (simulink_experiment_debug_typ_B.Clock < 61.85) {
-    dt = (simulink_experiment_debug_typ_B.Clock - 5.0) / 56.85;
-    if (dt < 0.5) {
-      amp = dt / 0.5 * 0.090000000000000011 + 0.05;
+    amplitude = (simulink_experiment_debug_typ_B.Clock - 5.0) / 56.85;
+    if (amplitude < 0.5) {
+      amplitude = amplitude / 0.5 * 0.090000000000000011 + 0.05;
       simulink_experiment_debug_typ_B.v_ref = cos
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.83775804095727813 -
          sin((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.11423973285781065)
-         * 0.2094395102393195 / 0.11423973285781065) * amp *
+         * 0.2094395102393195 / 0.11423973285781065) * amplitude *
         (0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock - 5.0)
           * 0.11423973285781065) * 0.2094395102393195) + sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.83775804095727813 -
          sin((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.11423973285781065)
          * 0.2094395102393195 / 0.11423973285781065) * 0.00316622691292876;
-      u0 = 0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock -
+      u1 = 0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock -
         5.0) * 6.2831853071795862 / 55.0) * 3.1415926535897931 / 15.0;
       simulink_experiment_debug_typ_B.a_ref = (cos(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
@@ -817,7 +1694,7 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
          55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
         12.566370614359172 / 15.0) * ((simulink_experiment_debug_typ_B.Clock -
-        5.0) * 6.0 / 1895.0 + 0.05) * (u0 * u0)) + cos(sin
+        5.0) * 6.0 / 1895.0 + 0.05) * (u1 * u1)) + cos(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
          55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
         12.566370614359172 / 15.0) * (sin((simulink_experiment_debug_typ_B.Clock
@@ -825,53 +1702,51 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.0 / 1895.0 + 0.05) /
         825.0;
     } else {
-      amp = 0.14;
+      amplitude = 0.14;
       simulink_experiment_debug_typ_B.v_ref = cos
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.83775804095727813 -
          sin((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.11423973285781065)
          * 0.2094395102393195 / 0.11423973285781065) * 0.14 *
         (0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock - 5.0)
           * 0.11423973285781065) * 0.2094395102393195);
-      theta_vel = 0.83775804095727813 - cos
-        ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-         55.0) * 3.1415926535897931 / 15.0;
+      u1 = 0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock -
+        5.0) * 6.2831853071795862 / 55.0) * 3.1415926535897931 / 15.0;
       simulink_experiment_debug_typ_B.a_ref = sin(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
          55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
-        12.566370614359172 / 15.0) * 7.0 * (theta_vel * theta_vel) / 50.0 + cos
-        (sin((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-             55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
-         12.566370614359172 / 15.0) * (sin
+        12.566370614359172 / 15.0) * 7.0 * (u1 * u1) / 50.0 + cos(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-         55.0) * 69.0872308076255) / 20625.0;
+         55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
+        12.566370614359172 / 15.0) * (sin((simulink_experiment_debug_typ_B.Clock
+        - 5.0) * 6.2831853071795862 / 55.0) * 69.0872308076255) / 20625.0;
     }
 
     simulink_experiment_debug_typ_B.p_ref = sin
       ((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.83775804095727813 - sin
        ((simulink_experiment_debug_typ_B.Clock - 5.0) * 0.11423973285781065) *
-       0.2094395102393195 / 0.11423973285781065) * amp;
+       0.2094395102393195 / 0.11423973285781065) * amplitude;
   } else if (simulink_experiment_debug_typ_B.Clock < 65.0) {
     simulink_experiment_debug_typ_B.p_ref = 0.0;
     simulink_experiment_debug_typ_B.v_ref = 0.0;
     simulink_experiment_debug_typ_B.a_ref = 0.0;
   } else if (simulink_experiment_debug_typ_B.Clock < 85.0) {
     if ((simulink_experiment_debug_typ_B.Clock - 65.0) / 20.0 < 0.5) {
-      theta_vel = 0.05;
+      amplitude = 0.05;
     } else {
-      theta_vel = 0.1;
+      amplitude = 0.1;
     }
 
-    u0 = sin((simulink_experiment_debug_typ_B.Clock - 65.0) *
+    u1 = sin((simulink_experiment_debug_typ_B.Clock - 65.0) *
              0.62831853071795862);
-    if (rtIsNaN(u0)) {
-      u0 = (rtNaN);
-    } else if (u0 < 0.0) {
-      u0 = -1.0;
+    if (rtIsNaN(u1)) {
+      u1 = (rtNaN);
+    } else if (u1 < 0.0) {
+      u1 = -1.0;
     } else {
-      u0 = (u0 > 0.0);
+      u1 = (u1 > 0.0);
     }
 
-    simulink_experiment_debug_typ_B.p_ref = theta_vel * u0;
+    simulink_experiment_debug_typ_B.p_ref = amplitude * u1;
     simulink_experiment_debug_typ_B.v_ref = 0.0;
     simulink_experiment_debug_typ_B.a_ref = 0.0;
   } else {
@@ -1054,7 +1929,10 @@ void simulink_experiment_debug_type1_initialize(void)
     int32_T i;
     static const int8_T tmp[8] = { 1, 0, 0, 0, 0, 1, 0, 0 };
 
-    static const real_T tmp_0[16] = { 0.00467317845216159, 0.00447778693210613,
+    static const int8_T tmp_0[16] = { 125, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0 };
+
+    static const real_T tmp_1[16] = { 0.00467317845216159, 0.00447778693210613,
       1.79600044138968E-6, -3.3479774974499E-9, 0.00447778693304056,
       0.104399968275514, 8.18335148621331E-5, -3.66963222880958E-8,
       1.79600514031296E-6, 8.18335789697825E-5, 0.00447750476234807,
@@ -1323,12 +2201,17 @@ void simulink_experiment_debug_type1_initialize(void)
       b_obj->C[i] = tmp[i];
     }
 
-    b_obj->x_hat[0] = -0.19;
+    for (i = 0; i < 16; i++) {
+      b_obj->Q[i] = tmp_0[i];
+    }
+
+    b_obj->R = 1.0;
+    b_obj->x_hat[0] = -0.05;
     b_obj->x_hat[1] = 0.0;
     b_obj->x_hat[2] = 0.0;
     b_obj->x_hat[3] = 0.0;
     for (i = 0; i < 16; i++) {
-      b_obj->P[i] = tmp_0[i];
+      b_obj->P[i] = tmp_1[i];
     }
 
     simulink_experiment_debug_ty_DW.objisempty = true;
@@ -1562,10 +2445,10 @@ RT_MODEL_simulink_experiment__T *simulink_experiment_debug_type1(void)
   simulink_experiment_debug_ty_M->Timing.stepSize2 = 0.01;
 
   /* External mode info */
-  simulink_experiment_debug_ty_M->Sizes.checksums[0] = (1514825212U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[1] = (3243759688U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[2] = (1801359378U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[3] = (3882987789U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[0] = (2095139769U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[1] = (2315151738U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[2] = (1886773115U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[3] = (3728185577U);
 
   {
     static const sysRanDType rtAlwaysEnabled = SUBSYS_RAN_BC_ENABLE;
