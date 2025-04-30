@@ -14,7 +14,10 @@ classdef studentControllerInterface < matlab.System
         B = [0; 0; 0; 1.5/0.025];
         C = [1, 0, 0, 0; 0, 0, 1, 0];
 
-        Q = [75,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0];
+        Q = [125, 0,0,0; 
+             0,   0,0,0; 
+             0,   0,0,0; 
+             0,   0,0,0];
         R = 1;
 
 
@@ -33,8 +36,8 @@ classdef studentControllerInterface < matlab.System
                        [0.025 0;
                        0 0.025]);
 
-        x_hat = [-0.19; 0.00; 0; 0];
-        x_est = [-0.19, 0.00, 0, 0];
+        % x_hat = [-0.19; 0.00; 0; 0];
+        x_hat = [-0.05; 0.00; 0; 0];
         P = [0.00467317845216159	0.00447778693304056	1.79600514031296e-06	-3.34363679122678e-09;
             0.00447778693210613	0.104399968275514	8.18335789697825e-05	-3.66928669353362e-08;
             1.79600044138968e-06	8.18335148621331e-05	0.00447750476234807	2.00500225891637e-05;
@@ -190,27 +193,30 @@ classdef studentControllerInterface < matlab.System
             end
             
             x = [p_ball, p_vel, theta, theta_vel];
-     
-            obj.x_est = x;
 
         end
         
         %% Feedback Controller: P Controller
         function V_servo = stepImplP(obj, t, x)
             p_ball = x(1);
+            v_ball = x(2);
             theta = x(3);
+            d_theta = x(4);
 
             t_prev = obj.t_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            k_p = 3;
+            k_p = 5;
+            k_d = 5.5;
             theta_d = - k_p * (p_ball - p_ball_ref);
+            theta_vd = - k_d * (v_ball - v_ball_ref);
 
             theta_saturation = 56 * pi / 180;    
             theta_d = min(theta_d, theta_saturation);
             theta_d = max(theta_d, -theta_saturation);
 
-            k_servo = 10;
-            V_servo = k_servo * (theta_d - theta);
+            kp_servo = 5;
+            kd_servo = 3;
+            V_servo = kp_servo * (theta_d - theta) + kd_servo * (theta_vd - d_theta);
             
             obj.t_prev = t;
             obj.theta_d = theta_d;
