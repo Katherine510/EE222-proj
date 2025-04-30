@@ -115,7 +115,7 @@ classdef studentControllerInterface < matlab.System
             x_p = obj.x_hat;
             P_p = obj.P;
             % V_servo = stepImplP(obj, t, xk);
-            V_servo = stepImplLQR(obj, t, xk);
+            % V_servo = stepImplLQR(obj, t, xg);
             % V_servo = stepImplLQG(obj, t, xg);
             dV = V_servo - obj.V_servo;
             if abs(dV) > 0.04
@@ -179,15 +179,15 @@ classdef studentControllerInterface < matlab.System
             d_theta = x(4);
             t_prev = obj.t_prev;
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            k_p = 5;
-            k_d = 5.5;
+            k_p = 6;
+            k_d = 10;
             theta_d = - k_p * (p_ball - p_ball_ref);
             theta_vd = - k_d * (v_ball - v_ball_ref);
             theta_saturation = 56 * pi / 180;    
             theta_d = min(theta_d, theta_saturation);
             theta_d = max(theta_d, -theta_saturation);
-            kp_servo = 5;
-            kd_servo = 3;
+            kp_servo = 7;
+            kd_servo = 8;
             V_servo = kp_servo * (theta_d - theta) + kd_servo * (theta_vd - d_theta);
             
             obj.t_prev = t;
