@@ -35,10 +35,10 @@ classdef studentControllerInterface < matlab.System
 
         x_hat = [-0.19; 0.00; 0; 0];
         x_est = [-0.19, 0.00, 0, 0];
-        P = [0.00467317845216159	0.00447778693304056	1.79600514031296e-06	-3.34363679122678e-09;
-            0.00447778693210613	0.104399968275514	8.18335789697825e-05	-3.66928669353362e-08;
-            1.79600044138968e-06	8.18335148621331e-05	0.00447750476234807	2.00500225891637e-05;
-            -3.34797749744990e-09	-3.66963222880958e-08	2.00500225883704e-05	0.00124997492495667];
+        P = [0.0467317815623619	0.0447778004908528	1.78824784506903e-05	-9.72628363658881e-08;
+        0.0447778006239112	1.04399801154487	0.000813669206862461	-4.19890583079601e-06;
+        1.78841833189080e-05	0.000813759820241742	0.0447750476449745	0.000200500235430101;
+        -9.71357741689433e-08	-4.19872658017098e-06	0.000200500235439306	0.0124997492494870];
         M = eye(4);
 
         W = 0.01 * [1, 0, 0, 0;
@@ -74,15 +74,15 @@ classdef studentControllerInterface < matlab.System
             x_p = obj.x_hat;
             P_p = obj.P;
             % V_servo = stepImplP(obj, t, xk);
-            V_servo = stepImplLQR(obj, t, xg);
+            V_servo = stepImplLQR(obj, t, xk);
             % V_servo = stepImplLQG(obj, t, xg);
 
             dV = V_servo - obj.V_servo;
-            if abs(dV) > 0.04
-                V_servo = 0.04 * sign(dV) + obj.V_servo;
-            elseif abs(dV) > 0.005
-                V_servo = obj.V_servo;
-            end
+%             if abs(dV) > 1
+%                 V_servo =1  * sign(dV) + obj.V_servo;
+%             elseif abs(dV) < 0.001
+%                 V_servo = obj.V_servo;
+%             end
 
             if V_servo > 5
                V_servo = 5;
@@ -169,7 +169,7 @@ classdef studentControllerInterface < matlab.System
             
             % fetch the previous values
             t_prev = obj.t_prev;
-            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
+            [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t+1.2);
             dt = t - t-t_prev;
             
             A_lin = linA(obj, x);
@@ -177,6 +177,7 @@ classdef studentControllerInterface < matlab.System
             
             % coder.extrinsic('lqr')
             K = [8.6603 10.0662 2.4465 0.0586];
+            % K = [11.1803 11.9559 2.674 0.0638];
             % K = lqr(A_lin, obj.B, obj.Q, obj.R);
 
             % dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q);

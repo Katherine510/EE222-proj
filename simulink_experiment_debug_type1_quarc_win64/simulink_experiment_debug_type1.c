@@ -9,7 +9,7 @@
  *
  * Model version              : 13.6
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C source code generated on : Wed Apr 16 14:01:15 2025
+ * C source code generated on : Wed Apr 30 14:09:34 2025
  *
  * Target selection: quarc_win64.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -24,8 +24,8 @@
 #include "simulink_experiment_debug_type1_private.h"
 #include <math.h>
 #include <emmintrin.h>
-#include "rt_nonfinite.h"
 #include <string.h>
+#include "rt_nonfinite.h"
 #include "simulink_experiment_debug_type1_dt.h"
 
 /* Block signals (default storage) */
@@ -151,18 +151,16 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
   real_T S[4];
   real_T x_p[4];
   real_T y[2];
+  real_T a21;
   real_T amp;
   real_T amp_max;
   real_T br;
   real_T dt;
-  real_T p_vel;
-  real_T theta_vel;
   real_T u0;
+  real_T u1;
+  real_T u2;
   real_T x3;
-  real_T xg_idx_0;
-  real_T xg_idx_1;
-  real_T xg_idx_2;
-  real_T xg_idx_3;
+  real_T x4;
   int32_T TWO;
   int32_T r1;
   static const int8_T tmp_1[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
@@ -230,43 +228,33 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
 
   /* MATLABSystem: '<Root>/MATLAB System' */
   u0 = simulink_experiment_debug_typ_B.Clock;
-  xg_idx_0 = simulink_experiment_debug_typ_B.BB01SensorGainmV;
-  xg_idx_2 = simulink_experiment_debug_typ_B.Bias;
+  u1 = simulink_experiment_debug_typ_B.BB01SensorGainmV;
+  u2 = simulink_experiment_debug_typ_B.Bias;
   obj = &simulink_experiment_debug_ty_DW.obj;
 
   /*         %% Main Controller Interface */
   /*  State Estimation */
-  obj_0 = obj;
-
   /*         %% State Estimation: Generic Time Stepping */
-  dt = u0 - obj_0->t_prev;
-  p_vel = (xg_idx_0 - obj_0->p_prev) / dt;
-  theta_vel = (xg_idx_2 - obj_0->theta_prev) / dt;
-  if (dt == 0.0) {
-    p_vel = 0.0;
-    theta_vel = 0.0;
-  }
-
-  xg_idx_1 = p_vel;
-  xg_idx_3 = theta_vel;
   obj_0 = obj;
 
   /*         %% State Estimation: Extended Kalman Filter */
   /*  Get some data */
-  y[0] = xg_idx_0;
-  y[1] = xg_idx_2;
+  y[0] = u1;
+  y[1] = u2;
   dt = u0 - obj_0->t_prev;
+  x_p[0] = obj_0->x_hat[0];
+  x_p[1] = obj_0->x_hat[1];
   x_p[2] = obj_0->x_hat[2];
   x_p[3] = obj_0->x_hat[3];
   if (dt > 0.0) {
     /*  Calculate kalman states */
     x3 = x_p[2];
-    theta_vel = x_p[3];
-    p_vel = rt_powd_snf(theta_vel, 4.0);
-    br = rt_powd_snf(theta_vel, 3.0);
-    theta_vel = x3;
-    theta_vel = cos(theta_vel);
-    theta_vel *= theta_vel;
+    x4 = x_p[3];
+    a21 = rt_powd_snf(x4, 4.0);
+    br = rt_powd_snf(x4, 3.0);
+    x4 = x3;
+    x4 = cos(x4);
+    x4 *= x4;
     amp_max = x3;
     amp_max = cos(amp_max);
     amp = x3;
@@ -274,8 +262,8 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     x3 = cos(x3);
     A_lin[1] = 0.0;
     A_lin[5] = 0.0;
-    A_lin[9] = 0.0051 * amp_max * amp * p_vel + 0.4183 * x3;
-    A_lin[13] = -0.0102 * br * theta_vel;
+    A_lin[9] = 0.0051 * amp_max * amp * a21 + 0.4183 * x3;
+    A_lin[13] = -0.0102 * br * x4;
     A_lin[0] = 0.0;
     A_lin[2] = 0.0;
     A_lin[3] = 0.0;
@@ -315,42 +303,42 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     S[2] = obj_0->B[2];
     S[3] = obj_0->B[3];
     br = obj_0->V_servo;
-    theta_vel = x_p[0];
-    x3 = S[0];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[0] = theta_vel;
-    theta_vel = x_p[1];
-    x3 = S[1];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[1] = theta_vel;
-    theta_vel = x_p[2];
-    x3 = S[2];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[2] = theta_vel;
-    theta_vel = x_p[3];
-    x3 = S[3];
-    x3 *= br;
-    theta_vel += x3;
-    theta_vel *= dt;
-    x_p[3] = theta_vel;
-    theta_vel = x_p[0];
-    theta_vel += obj_0->x_hat[0];
-    x_p[0] = theta_vel;
-    theta_vel = x_p[1];
-    theta_vel += obj_0->x_hat[1];
-    x_p[1] = theta_vel;
-    theta_vel = x_p[2];
-    theta_vel += obj_0->x_hat[2];
-    x_p[2] = theta_vel;
-    theta_vel = x_p[3];
-    theta_vel += obj_0->x_hat[3];
-    x_p[3] = theta_vel;
+    x3 = x_p[0];
+    x4 = S[0];
+    x4 *= br;
+    x3 += x4;
+    x3 *= dt;
+    x_p[0] = x3;
+    x3 = x_p[1];
+    x4 = S[1];
+    x4 *= br;
+    x3 += x4;
+    x3 *= dt;
+    x_p[1] = x3;
+    x3 = x_p[2];
+    x4 = S[2];
+    x4 *= br;
+    x3 += x4;
+    x3 *= dt;
+    x_p[2] = x3;
+    x3 = x_p[3];
+    x4 = S[3];
+    x4 *= br;
+    x3 += x4;
+    x3 *= dt;
+    x_p[3] = x3;
+    x3 = x_p[0];
+    x3 += obj_0->x_hat[0];
+    x_p[0] = x3;
+    x3 = x_p[1];
+    x3 += obj_0->x_hat[1];
+    x_p[1] = x3;
+    x3 = x_p[2];
+    x3 += obj_0->x_hat[2];
+    x_p[2] = x3;
+    x3 = x_p[3];
+    x3 += obj_0->x_hat[3];
+    x_p[3] = x3;
     for (TWO = 0; TWO < 16; TWO++) {
       b[TWO] = obj_0->P[TWO];
     }
@@ -388,33 +376,33 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     for (TWO = 0; TWO < 4; TWO++) {
       for (r1 = 0; r1 < 4; r1++) {
         b[TWO + (r1 << 2)] = 0.0;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO] * A_lin[r1];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 4] * A_lin[r1 + 4];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 8] * A_lin[r1 + 8];
-        b[TWO + (r1 << 2)] = x3;
-        x3 = b[(r1 << 2) + TWO];
-        x3 += b_y[TWO + 12] * A_lin[r1 + 12];
-        b[TWO + (r1 << 2)] = x3;
+        x4 = b[(r1 << 2) + TWO];
+        x4 += b_y[TWO] * A_lin[r1];
+        b[TWO + (r1 << 2)] = x4;
+        x4 = b[(r1 << 2) + TWO];
+        x4 += b_y[TWO + 4] * A_lin[r1 + 4];
+        b[TWO + (r1 << 2)] = x4;
+        x4 = b[(r1 << 2) + TWO];
+        x4 += b_y[TWO + 8] * A_lin[r1 + 8];
+        b[TWO + (r1 << 2)] = x4;
+        x4 = b[(r1 << 2) + TWO];
+        x4 += b_y[TWO + 12] * A_lin[r1 + 12];
+        b[TWO + (r1 << 2)] = x4;
       }
     }
 
     for (TWO = 0; TWO < 16; TWO++) {
-      theta_vel = P_p[TWO];
+      x3 = P_p[TWO];
       r1 = tmp_1[TWO];
-      theta_vel = (theta_vel + b[TWO]) + (real_T)r1;
-      theta_vel *= dt;
-      P_p[TWO] = theta_vel;
+      x3 = (x3 + b[TWO]) + (real_T)r1;
+      x3 *= dt;
+      P_p[TWO] = x3;
     }
 
     for (TWO = 0; TWO < 16; TWO++) {
-      theta_vel = P_p[TWO];
-      theta_vel += obj_0->P[TWO];
-      P_p[TWO] = theta_vel;
+      x3 = P_p[TWO];
+      x3 += obj_0->P[TWO];
+      P_p[TWO] = x3;
     }
 
     for (TWO = 0; TWO < 8; TWO++) {
@@ -495,31 +483,31 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
 
     TWO = 1;
     dt = S[1];
-    p_vel = fabs(dt);
-    theta_vel = p_vel;
+    x4 = fabs(dt);
+    a21 = x4;
     dt = S[0];
-    p_vel = fabs(dt);
-    if (theta_vel > p_vel) {
+    x4 = fabs(dt);
+    if (a21 > x4) {
       r1 = 1;
       TWO = 0;
     } else {
       r1 = 0;
     }
 
-    p_vel = S[TWO] / S[r1];
-    theta_vel = S[TWO + 2] - S[r1 + 2] * p_vel;
+    a21 = S[TWO] / S[r1];
+    x4 = S[TWO + 2] - S[r1 + 2] * a21;
     K[r1 << 2] = a[0] / S[r1];
-    K[TWO << 2] = (a[4] - K[r1 << 2] * S[r1 + 2]) / theta_vel;
-    K[r1 << 2] -= K[TWO << 2] * p_vel;
+    K[TWO << 2] = (a[4] - K[r1 << 2] * S[r1 + 2]) / x4;
+    K[r1 << 2] -= K[TWO << 2] * a21;
     K[(r1 << 2) + 1] = a[1] / S[r1];
-    K[(TWO << 2) + 1] = (a[5] - K[(r1 << 2) + 1] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 1] -= K[(TWO << 2) + 1] * p_vel;
+    K[(TWO << 2) + 1] = (a[5] - K[(r1 << 2) + 1] * S[r1 + 2]) / x4;
+    K[(r1 << 2) + 1] -= K[(TWO << 2) + 1] * a21;
     K[(r1 << 2) + 2] = a[2] / S[r1];
-    K[(TWO << 2) + 2] = (a[6] - K[(r1 << 2) + 2] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 2] -= K[(TWO << 2) + 2] * p_vel;
+    K[(TWO << 2) + 2] = (a[6] - K[(r1 << 2) + 2] * S[r1 + 2]) / x4;
+    K[(r1 << 2) + 2] -= K[(TWO << 2) + 2] * a21;
     K[(r1 << 2) + 3] = a[3] / S[r1];
-    K[(TWO << 2) + 3] = (a[7] - K[(r1 << 2) + 3] * S[r1 + 2]) / theta_vel;
-    K[(r1 << 2) + 3] -= K[(TWO << 2) + 3] * p_vel;
+    K[(TWO << 2) + 3] = (a[7] - K[(r1 << 2) + 3] * S[r1 + 2]) / x4;
+    K[(r1 << 2) + 3] -= K[(TWO << 2) + 3] * a21;
     for (TWO = 0; TWO <= 2; TWO += 2) {
       tmp = _mm_loadu_pd(&K[TWO]);
       tmp = _mm_mul_pd(tmp, _mm_set1_pd(y[0]));
@@ -603,10 +591,10 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
   }
 
   /*  Feedback Controller */
-  x_p[0] = obj->x_hat[0];
-  x_p[1] = obj->x_hat[1];
-  x_p[2] = obj->x_hat[2];
-  x_p[3] = obj->x_hat[3];
+  S[0] = obj->x_hat[0];
+  S[1] = obj->x_hat[1];
+  S[2] = obj->x_hat[2];
+  S[3] = obj->x_hat[3];
   for (TWO = 0; TWO < 16; TWO++) {
     P_p[TWO] = obj->P[TWO];
   }
@@ -614,11 +602,12 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
   /*  V_servo = stepImplP(obj, t, xk); */
   /*         %% Feedback Controller: LQR */
   /*  fetch the previous values */
-  if (u0 < 5.0) {
-    p_vel = 0.0;
+  a21 = u0 + 1.2;
+  if (a21 < 5.0) {
+    a21 = 0.0;
     amp_max = 0.0;
-  } else if (u0 < 61.85) {
-    x3 = u0 - 5.0;
+  } else if (a21 < 61.85) {
+    x3 = a21 - 5.0;
     dt = x3 / 56.85;
     if (dt < 0.5) {
       amp = dt / 0.5 * 0.090000000000000011 + 0.05;
@@ -627,15 +616,15 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
       dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
         0.11423973285781065;
       dt = sin(dt);
-      theta_vel = 0.11423973285781065 * x3;
-      theta_vel = sin(theta_vel);
-      theta_vel = 0.83775804095727813 * x3 - 0.2094395102393195 * theta_vel /
+      x4 = 0.11423973285781065 * x3;
+      x4 = sin(x4);
+      x4 = 0.83775804095727813 * x3 - 0.2094395102393195 * x4 /
         0.11423973285781065;
-      theta_vel = cos(theta_vel);
+      x4 = cos(x4);
       br = 0.11423973285781065 * x3;
       br = cos(br);
-      amp_max = (0.83775804095727813 - 0.2094395102393195 * br) * (amp *
-        theta_vel) + 0.00316622691292876 * dt;
+      amp_max = (0.83775804095727813 - 0.2094395102393195 * br) * (amp * x4) +
+        0.00316622691292876 * dt;
     } else {
       amp = 0.14;
       dt = 0.11423973285781065 * x3;
@@ -643,10 +632,9 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
       dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
         0.11423973285781065;
       dt = cos(dt);
-      theta_vel = 0.11423973285781065 * x3;
-      theta_vel = cos(theta_vel);
-      amp_max = (0.83775804095727813 - 0.2094395102393195 * theta_vel) * (0.14 *
-        dt);
+      x4 = 0.11423973285781065 * x3;
+      x4 = cos(x4);
+      amp_max = (0.83775804095727813 - 0.2094395102393195 * x4) * (0.14 * dt);
     }
 
     dt = 0.11423973285781065 * x3;
@@ -654,20 +642,20 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     dt = 0.83775804095727813 * x3 - 0.2094395102393195 * dt /
       0.11423973285781065;
     dt = sin(dt);
-    p_vel = amp * dt;
-  } else if (u0 < 65.0) {
-    p_vel = 0.0;
+    a21 = amp * dt;
+  } else if (a21 < 65.0) {
+    a21 = 0.0;
     amp_max = 0.0;
-  } else if (u0 < 85.0) {
-    p_vel = u0 - 65.0;
-    theta_vel = p_vel / 20.0;
-    if (theta_vel < 0.5) {
-      theta_vel = 0.05;
+  } else if (a21 < 85.0) {
+    a21 -= 65.0;
+    x4 = a21 / 20.0;
+    if (x4 < 0.5) {
+      x4 = 0.05;
     } else {
-      theta_vel = 0.1;
+      x4 = 0.1;
     }
 
-    dt = 0.62831853071795862 * p_vel;
+    dt = 0.62831853071795862 * a21;
     dt = sin(dt);
     if (dt < 0.0) {
       dt = -1.0;
@@ -675,17 +663,20 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
       dt = (dt > 0.0);
     }
 
-    p_vel = theta_vel * dt;
+    a21 = x4 * dt;
     amp_max = 0.0;
   } else {
-    p_vel = 0.0;
+    a21 = 0.0;
     amp_max = 0.0;
   }
 
-  dt = xg_idx_0 - p_vel;
-  xg_idx_1 -= amp_max;
+  dt = x_p[0] - a21;
+  x3 = x_p[1] - amp_max;
+  x4 = x_p[2];
+  br = x_p[3];
 
   /*  coder.extrinsic('lqr') */
+  /*  K = [11.1803 11.9559 2.674 0.0638]; */
   /*  K = lqr(A_lin, obj.B, obj.Q, obj.R); */
   /*  dP = -(A_lin'*obj.P + obj.P*A_lin - (obj.P*obj.B)/obj.R*(obj.B'*obj.P) + obj.Q); */
   /*  P = dt*dP + obj.P; */
@@ -697,53 +688,40 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
   /*             [P,~,~] = icare(A_lin,obj.B,obj.Q,obj.R,[],[],[]); */
   /*  K = inv(obj.R)*(obj.B'*P); */
   /*  disp(K) */
-  theta_vel = -8.6603 * dt;
-  dt = xg_idx_1;
-  theta_vel += -10.0662 * dt;
-  dt = xg_idx_2;
-  theta_vel += -2.4465 * dt;
-  dt = xg_idx_3;
-  theta_vel += -0.0586 * dt;
+  x_p[0] = dt;
+  x_p[1] = x3;
+  x_p[2] = x4;
+  x_p[3] = br;
+  a21 = -8.6603 * x_p[0];
+  a21 += -10.0662 * x_p[1];
+  a21 += -2.4465 * x_p[2];
+  a21 += -0.0586 * x_p[3];
 
   /*  V_servo = stepImplLQG(obj, t, xg); */
-  dt = theta_vel - obj->V_servo;
-  p_vel = fabs(dt);
-  if (p_vel > 0.04) {
-    if (rtIsNaN(dt)) {
-      dt = (rtNaN);
-    } else if (dt < 0.0) {
-      dt = -1.0;
-    } else {
-      dt = (dt > 0.0);
-    }
-
-    theta_vel = 0.04 * dt + obj->V_servo;
-  } else {
-    p_vel = fabs(dt);
-    if (p_vel > 0.005) {
-      theta_vel = obj->V_servo;
-    }
+  /*              if abs(dV) > 1 */
+  /*                  V_servo =1  * sign(dV) + obj.V_servo; */
+  /*              elseif abs(dV) < 0.001 */
+  /*                  V_servo = obj.V_servo; */
+  /*              end */
+  if (a21 > 5.0) {
+    a21 = 5.0;
+  } else if (a21 < -5.0) {
+    a21 = -5.0;
   }
 
-  if (theta_vel > 5.0) {
-    theta_vel = 5.0;
-  } else if (theta_vel < -5.0) {
-    theta_vel = -5.0;
-  }
-
-  obj->V_servo = theta_vel;
+  obj->V_servo = a21;
   obj->t_prev = u0;
-  obj->p_prev = xg_idx_0;
-  obj->theta_prev = xg_idx_2;
+  obj->p_prev = u1;
+  obj->theta_prev = u2;
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  simulink_experiment_debug_typ_B.MATLABSystem_o1 = theta_vel;
+  simulink_experiment_debug_typ_B.MATLABSystem_o1 = a21;
 
   /* MATLABSystem: '<Root>/MATLAB System' */
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[0] = x_p[0];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[1] = x_p[1];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[2] = x_p[2];
-  simulink_experiment_debug_typ_B.MATLABSystem_o2[3] = x_p[3];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[0] = S[0];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[1] = S[1];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[2] = S[2];
+  simulink_experiment_debug_typ_B.MATLABSystem_o2[3] = S[3];
 
   /* MATLABSystem: '<Root>/MATLAB System' */
   memcpy(&simulink_experiment_debug_typ_B.MATLABSystem_o3[0], &P_p[0], sizeof
@@ -751,14 +729,14 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
 
   /* Saturate: '<Root>/+//-10V' */
   u0 = simulink_experiment_debug_typ_B.MATLABSystem_o1;
-  xg_idx_0 = simulink_experiment_debug_typ_P.u0V_LowerSat;
-  xg_idx_1 = simulink_experiment_debug_typ_P.u0V_UpperSat;
-  if (u0 > xg_idx_1) {
+  u1 = simulink_experiment_debug_typ_P.u0V_LowerSat;
+  u2 = simulink_experiment_debug_typ_P.u0V_UpperSat;
+  if (u0 > u2) {
     /* Saturate: '<Root>/+//-10V' */
-    simulink_experiment_debug_typ_B.u0V = xg_idx_1;
-  } else if (u0 < xg_idx_0) {
+    simulink_experiment_debug_typ_B.u0V = u2;
+  } else if (u0 < u1) {
     /* Saturate: '<Root>/+//-10V' */
-    simulink_experiment_debug_typ_B.u0V = xg_idx_0;
+    simulink_experiment_debug_typ_B.u0V = u1;
   } else {
     /* Saturate: '<Root>/+//-10V' */
     simulink_experiment_debug_typ_B.u0V = u0;
@@ -832,18 +810,16 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
          * 0.2094395102393195 / 0.11423973285781065) * 0.14 *
         (0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock - 5.0)
           * 0.11423973285781065) * 0.2094395102393195);
-      theta_vel = 0.83775804095727813 - cos
-        ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-         55.0) * 3.1415926535897931 / 15.0;
+      x4 = 0.83775804095727813 - cos((simulink_experiment_debug_typ_B.Clock -
+        5.0) * 6.2831853071795862 / 55.0) * 3.1415926535897931 / 15.0;
       simulink_experiment_debug_typ_B.a_ref = sin(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
          55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
-        12.566370614359172 / 15.0) * 7.0 * (theta_vel * theta_vel) / 50.0 + cos
-        (sin((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-             55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
-         12.566370614359172 / 15.0) * (sin
+        12.566370614359172 / 15.0) * 7.0 * (x4 * x4) / 50.0 + cos(sin
         ((simulink_experiment_debug_typ_B.Clock - 5.0) * 6.2831853071795862 /
-         55.0) * 69.0872308076255) / 20625.0;
+         55.0) * 11.0 / 6.0 - (simulink_experiment_debug_typ_B.Clock - 5.0) *
+        12.566370614359172 / 15.0) * (sin((simulink_experiment_debug_typ_B.Clock
+        - 5.0) * 6.2831853071795862 / 55.0) * 69.0872308076255) / 20625.0;
     }
 
     simulink_experiment_debug_typ_B.p_ref = sin
@@ -856,9 +832,9 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
     simulink_experiment_debug_typ_B.a_ref = 0.0;
   } else if (simulink_experiment_debug_typ_B.Clock < 85.0) {
     if ((simulink_experiment_debug_typ_B.Clock - 65.0) / 20.0 < 0.5) {
-      theta_vel = 0.05;
+      x4 = 0.05;
     } else {
-      theta_vel = 0.1;
+      x4 = 0.1;
     }
 
     u0 = sin((simulink_experiment_debug_typ_B.Clock - 65.0) *
@@ -871,7 +847,7 @@ void simulink_experiment_debug_type1_output0(void) /* Sample time: [0.0s, 0.0s] 
       u0 = (u0 > 0.0);
     }
 
-    simulink_experiment_debug_typ_B.p_ref = theta_vel * u0;
+    simulink_experiment_debug_typ_B.p_ref = x4 * u0;
     simulink_experiment_debug_typ_B.v_ref = 0.0;
     simulink_experiment_debug_typ_B.a_ref = 0.0;
   } else {
@@ -1054,12 +1030,12 @@ void simulink_experiment_debug_type1_initialize(void)
     int32_T i;
     static const int8_T tmp[8] = { 1, 0, 0, 0, 0, 1, 0, 0 };
 
-    static const real_T tmp_0[16] = { 0.00467317845216159, 0.00447778693210613,
-      1.79600044138968E-6, -3.3479774974499E-9, 0.00447778693304056,
-      0.104399968275514, 8.18335148621331E-5, -3.66963222880958E-8,
-      1.79600514031296E-6, 8.18335789697825E-5, 0.00447750476234807,
-      2.00500225883704E-5, -3.34363679122678E-9, -3.66928669353362E-8,
-      2.00500225891637E-5, 0.00124997492495667 };
+    static const real_T tmp_0[16] = { 0.0467317815623619, 0.0447778006239112,
+      1.7884183318908E-5, -9.71357741689433E-8, 0.0447778004908528,
+      1.04399801154487, 0.000813759820241742, -4.19872658017098E-6,
+      1.78824784506903E-5, 0.000813669206862461, 0.0447750476449745,
+      0.000200500235439306, -9.72628363658881E-8, -4.19890583079601E-6,
+      0.000200500235430101, 0.012499749249487 };
 
     /* Start for S-Function (hil_initialize_block): '<S1>/HIL Initialize' */
 
@@ -1562,10 +1538,10 @@ RT_MODEL_simulink_experiment__T *simulink_experiment_debug_type1(void)
   simulink_experiment_debug_ty_M->Timing.stepSize2 = 0.01;
 
   /* External mode info */
-  simulink_experiment_debug_ty_M->Sizes.checksums[0] = (1514825212U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[1] = (3243759688U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[2] = (1801359378U);
-  simulink_experiment_debug_ty_M->Sizes.checksums[3] = (3882987789U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[0] = (1948955183U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[1] = (443986687U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[2] = (2058870174U);
+  simulink_experiment_debug_ty_M->Sizes.checksums[3] = (74931320U);
 
   {
     static const sysRanDType rtAlwaysEnabled = SUBSYS_RAN_BC_ENABLE;
